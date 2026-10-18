@@ -1,0 +1,182 @@
+---
+title: "Raport"
+author: "Wiktor Niedźwiedzki, Dawid Skowroński"
+classoption: a4paper, 12pt
+date: "33 grudnia 2026 Anno Domini"
+geometry: top=2.5cm, bottom=2.5cm, left=2cm, right=2cm
+output: 
+  pdf_document:
+    toc: true
+    fig_caption: yes
+    fig_width: 5
+    fig_height: 4
+    number_sections: true
+    includes:
+        in_header: "preamble.tex"
+lof: true
+lot: true
+---
+
+```{r biblioteki, include=FALSE}
+library(knitr)
+library(ggplot2)
+library(dplyr)
+library(xtable)
+library(gridExtra)
+library(latex2exp)
+library(ggExtra)
+library(paletteer)
+library(patchwork)
+library(Stat2Data)
+
+knitr::opts_chunk$set(
+  fig.align = 'center',
+  fig.pos = 'H',
+  dev = 'png',
+  dpi = 1200,
+  fig.width = 6,
+  fig.height = 3.5,
+  echo = TRUE
+)
+
+# ZMNIEJSZENIE FONTÓW GLOBALNIE
+theme_set(
+  theme_minimal() +
+    theme(
+      axis.text  = element_text(size = 7),
+      axis.title = element_text(size = 8),
+      legend.text  = element_text(size = 7),
+      legend.title = element_text(size = 8)
+    )
+)
+```
+
+```{r echo=FALSE}
+set.seed(258882 + 282224)
+```
+\newpage
+
+# Lista 1
+
+Lista 1. stanowi wprowadzenie do pracy związanej z analizą danych ankietowych. Jej celem jest wybór odpowiedniego zbioru danych, który zostanie wykorzystany w dalszych analizach statystycznych.
+
+## Zadanie 1
+
+Zadanie polega na wyborze odpowiedniego zbioru danych do dalszej analizy. Wybrano zbiór `SuicideChina`, dostępny w bibliotece `Stat2Data` w języku R.
+
+Następnie zbiór danych został poddany wstępnemu przetwarzaniu w celu przygotowania go do dalszych analiz. Usunięto zmienne nieprzydatne w analizie, takie jak identyfikator osoby (`Person_ID`), rok (`Year`) i miesiąc (`Month`). Odfiltrowano również obserwacje zawierające niesprecyzowane lub niepożądane wartości w wybranych zmiennych, m.in. `Urban`, `Education`, `Occupation` i `method`.
+
+Ponadto zmienne `Hospitalised` i `Died`, pierwotnie zapisane jako wartości tekstowe „yes” i „no”, przekodowano na wartości binarne 1 i 0, a następnie przekształcono w zmienne kategorialne o dwóch poziomach. W zmiennej `method` wartości z kategorią „Poison unspec” zastąpiono kategorią „Other poison”. Zmienną `Education` przekształcono w zmienną porządkową, uwzględniając kolejność poziomów wykształcenia.
+
+Wprowadzone zmiany miały na celu uporządkowanie danych, ujednolicenie sposobu kodowania wybranych zmiennych oraz przygotowanie zbioru do dalszej analizy statystycznej.
+
+W poniższym bloku kodu przedstawiono sposób przetworzenia i modyfikacji zbioru danych `SuicideChina`:
+
+```{r}
+data(SuicideChina)
+
+SuicideChina <- SuicideChina |>
+  select(-Person_ID, -Year, -Month) |>
+  mutate(
+    Education = recode(Education, "iliterate" = "illiterate")
+  ) |>
+  filter(
+    Urban != "unknown",
+    Education != "unknown",
+    Occupation != "others/unknown",
+    Occupation != "others",
+    method != "Others",
+    method != "unspecified"
+  ) |>
+  mutate(
+    Hospitalised = recode(Hospitalised, "yes" = 1L, "no" = 0L),
+    Died = recode(Died, "yes" = 1L, "no" = 0L),
+    method = recode(method, "Poison unspec" = "Other poison"),
+    Education = factor(
+      Education,
+      levels = c("illiterate", "primary", "Secondary", "Tertiary"),
+      ordered = TRUE
+    )
+  ) |>
+  mutate(
+    across(where(is.factor), droplevels)
+  ) 
+```
+
+## Zadanie 2
+
+Oryginalne dane pochodzą z badania opisanego w artykule:
+
+Sun J., Guo X., Zhang J., Wang M., Jia C., Xu A. (2015). „Incidence and fatality of serious suicide attempts in a predominantly rural population in Shandong, China: a public health surveillance study”. *BMJ Open*, 5(2), e006762. https://doi.org/10.1136/bmjopen-2014-006762.
+
+Jak wskazują autorzy, dane zebrano z baz danych dotyczących zgonów samobójczych oraz hospitalizacji związanych z próbami samobójczymi w trzech wybranych powiatach prowincji Shandong w Chinach. Przypadki identyfikowano na podstawie pierwotnej przyczyny zgonu lub głównego rozpoznania medycznego, stosując 10. rewizję Międzynarodowej Klasyfikacji Chorób (ICD-10). Rekordy zostały zweryfikowane w celu wykrycia duplikatów, a dane dotyczące tych samych zdarzeń, występujące w obu bazach, powiązano na podstawie imienia i nazwiska, płci, miejsca zamieszkania oraz czasu zdarzenia.
+
+Następnie dane dotyczące zgonów i hospitalizacji połączono w jeden zbiór obejmujący informacje o metodzie próby samobójczej, dacie zdarzenia, jego skutku oraz cechach demograficznych osób. Zastosowano również klasyfikację metod prób samobójczych, uwzględniając m.in. zatrucia pestycydami i innymi substancjami, powieszenie, utonięcie, samookaleczenie ostrym narzędziem oraz skok z wysokości. Ostatecznie zbiór źródłowy obejmował 2571 osób.
+
+Po przeprowadzeniu wstępnego przetwarzania zbiór `SuicideChina` zawiera 2286 obserwacji i 8 zmiennych. Zmienne opisują m.in. wiek i płeć osób, poziom ich wykształcenia, kategorię zawodową, miejsce zamieszkania, hospitalizację, zgon oraz metodę podjęcia próby samobójczej.
+
+W tabeli przedstawiono nazwy zmiennych, ich znaczenie, typ statystyczny oraz przykładowe wartości.
+
+```{r echo=FALSE}
+Opis_danych <- data.frame(
+  Zmienna = c(
+    "Hospitalised", "Died", "Urban", "Sex",
+    "Age", "Education", "Occupation", "method"
+  ),
+  Opis = c(
+    "Informacja o hospitalizacji osoby",
+    "Informacja o zgonie osoby",
+    "Informacja o zamieszkaniu na obszarze miejskim",
+    "Płeć osoby",
+    "Wiek osoby wyrażony w latach",
+    "Poziom wykształcenia",
+    "Kategoria zawodowa osoby",
+    "Metoda podjęcia próby samobójczej"
+  ),
+  Typ = c(
+    "Binarna, nominalna",
+    "Binarna, nominalna",
+    "Binarna, nominalna",
+    "Binarna, nominalna",
+    "Ilościowa, dyskretna",
+    "Jakościowa, porządkowa",
+    "Jakościowa, nominalna",
+    "Jakościowa, nominalna"
+  ),
+  `Przykładowe wartości` = c(
+    "0, 1",
+    "0, 1",
+    "no, yes",
+    "female, male",
+    "39, 83, 60",
+    "Secondary, Tertiary",
+    "farming, household",
+    "Cutting, Hanging"
+  ),
+  check.names = FALSE
+)
+
+kable(
+  Opis_danych,
+  caption = "Charakterystyka zmiennych w zbiorze danych SuicideChina",
+  booktabs = TRUE,
+  row.names = FALSE
+)
+```
+
+Źródło: Opracowanie własne na podstawie zbioru danych `SuicideChina` z pakietu `Stat2Data` oraz opis danych w pakiecie.
+
+
+Zmienna `Education` ma charakter porządkowy, ponieważ jej kategorie można uporządkować od najniższego do najwyższego poziomu wykształcenia: `illiterate`, `primary`, `Secondary`, `Tertiary`. Zmienne `Urban`, `Sex`, `Occupation` i `method` są nominalne, ponieważ ich kategorie nie mają naturalnej kolejności. Zmienna `Age` jest ilościowa i w analizowanym zbiorze przyjmuje wartości w pełnych latach, dlatego można ją traktować jako dyskretną.
+
+# Lista 2
+
+kotek
+
+## Zadanie 1
+
+kotek
+
+## Zadanie 2
+
+kotek
