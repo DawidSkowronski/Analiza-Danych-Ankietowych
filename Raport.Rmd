@@ -27,7 +27,7 @@ library(latex2exp)
 library(ggExtra)
 library(paletteer)
 library(patchwork)
-library(Stat2Data)
+#library(Stat2Data)
 
 knitr::opts_chunk$set(
   fig.align = 'center',
@@ -36,7 +36,8 @@ knitr::opts_chunk$set(
   dpi = 1200,
   fig.width = 6,
   fig.height = 3.5,
-  echo = TRUE
+  echo = TRUE,
+  warning = FALSE
 )
 
 # ZMNIEJSZENIE FONTÓW GLOBALNIE
@@ -73,7 +74,8 @@ Wprowadzone zmiany miały na celu uporządkowanie danych, ujednolicenie sposobu 
 W poniższym bloku kodu przedstawiono sposób przetworzenia i modyfikacji zbioru danych `SuicideChina`:
 
 ```{r}
-data(SuicideChina)
+#data(SuicideChina)
+SuicideChina <- read.csv("SuicideChina.csv", row.names = 1)
 
 SuicideChina <- SuicideChina |>
   select(-Person_ID, -Year, -Month) |>
