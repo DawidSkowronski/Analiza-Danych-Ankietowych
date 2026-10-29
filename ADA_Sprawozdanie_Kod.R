@@ -162,18 +162,91 @@ prawd_p <- c(.1, .5, .9)
 
 poz_ufnosci <- .95
 
-M <- 10
+M <- 10000
+
+# rbinom(M, n, p) zwróci M realizacji próby długości n o prawd sukcesu p
+# wynikiem jest wektor liczby sukcesów w każdej realizacji próby
+
+# Dwie macierze, na pokrycie i oczekiwaną długość
+# Badamy 3 metody, 4 rozmiary próby i 3 prawdopodobieństwa. Daje to 36 kombinacji
+
+metody <- c('exact','asymptotic', 'wilson')
+nazwy_metod <- c("Clopper-Pearson", "Wald", "Wilson")
+
+podsumowanie_symulacji_przedzialy <- data.frame()
+
+for (i in seq_along(rozmiar_proby)){
+    n <- rozmiar_proby[i]
+    
+  for (j in seq_along(prawd_p)){
+    p <- prawd_p[j]
+
+    realizacje_proby <- rbinom(M,n,p) 
+
+    realizacje_przedzialow <- binom.confint(realizacje_proby, n, conf.level = .95, methods = metody)
+    
+    # Kolejno dla każdej metody
+    for (indeks_m in seq_along(metody)){
+      obecna_metoda <- metody[indeks_m]
+      nazwa_obecnej_metody <- nazwy_metod[indeks_m]
+      
+      realizacje_obecnej_metody <- realizacje_przedzialow[realizacje_przedzialow$method == obecna_metoda,]
+    
+    # Dla każdej realizacji sprawdzamy:
+    
+    # Symulacyjnie - oczekiwana długość i pokrycie 
+    oczekiwana_dlugosc <- mean(realizacje_obecnej_metody$upper - realizacje_obecnej_metody$lower)
+    
+    szacowane_pokrycie <- mean(p>=realizacje_obecnej_metody$lower & p<=realizacje_obecnej_metody$upper)
+    
+    # Teoretycznie - funkcją binom.coverage
+    pokrycie_bi_coverage <- binom.coverage(p = p, n = n, conf.level = .95, method = obecna_metoda)$coverage
+    
+    wynik_dla_metody <- data.frame(
+      n=n,
+      p=p,
+      Metoda = nazwa_obecnej_metody,
+      Pokrycie_Symulacja = round(szacowane_pokrycie,4),
+      Pokrycie_binom= round(pokrycie_bi_coverage,4),
+      Srednia_Dlugosc = round(oczekiwana_dlugosc,4)
+    )
+    podsumowanie_symulacji_przedzialy <- rbind(podsumowanie_symulacji_przedzialy, wynik_dla_metody)
+    }
+    
+  }
+}
+
+View(podsumowanie_symulacji_przedzialy)
+podsumowanie_symulacji_przedzialy
+
+ggplot(podsumowanie_symulacji_przedzialy, aes(x = factor(n), y = Pokrycie_Symulacja, fill = Metoda)) +
+  geom_col(position = position_dodge(0.8), width = 0.7) +
+  geom_hline(yintercept = 0.95, linetype = "dashed", color = "red", linewidth = 0.8) +
+  facet_wrap(~ paste("p =", p)) +
+  coord_cartesian(ylim = c(0.80, 1.0)) +
+  labs(
+    title = "Empiryczne prawdopodobieństwo pokrycia (Monte Carlo)",
+    x = "Rozmiar próby (n)",
+    y = "Prawdopodobieństwo pokrycia"
+  ) +
+  theme_minimal()
+
+ggplot(podsumowanie_symulacji_przedzialy, aes(x = n, y = Srednia_Dlugosc, color = Metoda, group = Metoda)) +
+  geom_line(linewidth = 0.8) +
+  geom_point(size = 2) +
+  facet_wrap(~ paste("p =", p), scales = "free_y") +
+  labs(
+    title = "Oczekiwana długość przedziału ufności",
+    x = "Rozmiar próby (n)",
+    y = "Średnia szerokość przedziału"
+  ) +
+  theme_minimal()
 
 
-macierz_realizacji_prob <- matrix(NA, nrow = M, ncol = 4 )
-macierz_realizacji_prob
-
-for (i in 1:M){
-  
-} 
-
-
-
+# Pokrycie dla n = 30 w pełnym zakresie p:
+binom.plot(n = c(30,100), method = binom.exact, main = "Clopper-Pearson (n=30)")
+binom.plot(n = c(30,100), method = binom.asymp, main = "Wald (n=30)")
+binom.plot(n = c(30,100), method = binom.wilson, main = "Wilson (n=30)")
 
 
 
