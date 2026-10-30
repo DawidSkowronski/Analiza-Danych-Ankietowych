@@ -19,15 +19,12 @@ lot: true
 
 ```{r biblioteki, include=FALSE}
 library(knitr)
+library(kableExtra)
 library(ggplot2)
 library(dplyr)
-library(xtable)
-library(gridExtra)
-library(latex2exp)
-library(ggExtra)
-library(paletteer)
-library(patchwork)
-#library(Stat2Data)
+library(Stat2Data)
+library(ggmosaic2)
+library(binom)
 
 knitr::opts_chunk$set(
   fig.align = 'center',
@@ -36,8 +33,7 @@ knitr::opts_chunk$set(
   dpi = 1200,
   fig.width = 6,
   fig.height = 3.5,
-  echo = TRUE,
-  warning = FALSE
+  echo = FALSE # important
 )
 
 # ZMNIEJSZENIE FONTÓW GLOBALNIE
@@ -52,9 +48,6 @@ theme_set(
 )
 ```
 
-```{r echo=FALSE}
-set.seed(258882 + 282224)
-```
 \newpage
 
 # Lista 1
@@ -65,17 +58,13 @@ Lista 1. stanowi wprowadzenie do pracy związanej z analizą danych ankietowych.
 
 Zadanie polega na wyborze odpowiedniego zbioru danych do dalszej analizy. Wybrano zbiór `SuicideChina`, dostępny w bibliotece `Stat2Data` w języku R.
 
-Następnie zbiór danych został poddany wstępnemu przetwarzaniu w celu przygotowania go do dalszych analiz. Usunięto zmienne nieprzydatne w analizie, takie jak identyfikator osoby (`Person_ID`), rok (`Year`) i miesiąc (`Month`). Odfiltrowano również obserwacje zawierające niesprecyzowane lub niepożądane wartości w wybranych zmiennych, m.in. `Urban`, `Education`, `Occupation` i `method`.
+Zbiór danych został poddany wstępnemu przetwarzaniu w celu przygotowania go do dalszych analiz. Usunięto zmienne nieprzydatne w analizie, takie jak identyfikator osoby (`Person_ID`), rok (`Year`) i miesiąc (`Month`). Następnie przetłumaczono nazwy zmiennych oraz wartości kategorii na język polski, aby ułatwić interpretację danych i zachować spójność językową analizy. Zmieniono nazwy kolumn na `Hospitalizowano`, `Zgon`, `Miasto`, `Plec`, `Wiek`, `Wyksztalcenie`, `Zawod` i `Metoda`. Odfiltrowano  obserwacje zawierające niesprecyzowane lub niepożądane wartości w zmiennych `Miasto`, `Wyksztalcenie`, `Zawod` i `Metoda`. Zmienne binarne w `Hospitalizowano`, `Zgon` oraz `Miasto` przekonwertowano na wartości binarne 1 oraz 0. W zmiennej `Metoda` wartości z kategorią „Niesprecyzowana trucizna" zastąpiono kategorią „Inna trucizja”. Zmienną `Wykształcenie` przekształcono w zmienną porządkową, uwzględniając kolejność poziomów wykształcenia.
 
-Ponadto zmienne `Hospitalised` i `Died`, pierwotnie zapisane jako wartości tekstowe „yes” i „no”, przekodowano na wartości binarne 1 i 0, a następnie przekształcono w zmienne kategorialne o dwóch poziomach. W zmiennej `method` wartości z kategorią „Poison unspec” zastąpiono kategorią „Other poison”. Zmienną `Education` przekształcono w zmienną porządkową, uwzględniając kolejność poziomów wykształcenia.
-
-Wprowadzone zmiany miały na celu uporządkowanie danych, ujednolicenie sposobu kodowania wybranych zmiennych oraz przygotowanie zbioru do dalszej analizy statystycznej.
-
-W poniższym bloku kodu przedstawiono sposób przetworzenia i modyfikacji zbioru danych `SuicideChina`:
+Wprowadzone zmiany miały na celu poprawę czytelności i jakości danych, ujednolicenie sposobu kodowania zmiennych oraz przygotowanie zbioru do dalszej analizy statystycznej.
 
 ```{r}
-#data(SuicideChina)
-SuicideChina <- read.csv("SuicideChina.csv", row.names = 1)
+
+data(SuicideChina)
 
 SuicideChina <- SuicideChina |>
   select(-Person_ID, -Year, -Month) |>
@@ -102,7 +91,52 @@ SuicideChina <- SuicideChina |>
   ) |>
   mutate(
     across(where(is.factor), droplevels)
-  ) 
+  ) |>
+  rename(
+    Hospitalizowano = Hospitalised,
+    Zgon = Died,
+    Miasto = Urban,
+    Plec = Sex,
+    Wiek = Age,
+    Wyksztalcenie = Education,
+    Zawod = Occupation,
+    Metoda = method
+  ) |>
+  mutate(
+    Miasto = recode(Miasto, "no" = 0L, "yes" = 1L),
+    Plec = recode(Plec, "female" = "kobieta", "male" = "mężczyzna"),
+    Wyksztalcenie = factor(
+      recode(
+        as.character(Wyksztalcenie),
+        "illiterate" = "niepiśmienny",
+        "primary" = "podstawowe",
+        "Secondary" = "średnie",
+        "Tertiary" = "wyższe"
+      ),
+      levels = c("niepiśmienny", "podstawowe", "średnie", "wyższe"),
+      ordered = TRUE
+    ),
+    Zawod = recode(
+      Zawod,
+      "business/service" = "handel/usługi",
+      "farming" = "rolnictwo",
+      "household" = "gospodarstwo domowe",
+      "professional" = "wolny zawód",
+      "retiree" = "emeryt",
+      "student" = "uczeń/student",
+      "unemployed" = "bezrobotny",
+      "worker" = "robotnik"
+    ),
+    Metoda = recode(
+      Metoda,
+      "Cutting" = "podcięcie",
+      "Drowning" = "utonięcie",
+      "Hanging" = "powieszenie",
+      "Jumping" = "skok",
+      "Other poison" = "inna trucizna",
+      "Pesticide" = "pestycyd"
+    )
+  )
 ```
 
 ## Zadanie 2
@@ -115,15 +149,15 @@ Jak wskazują autorzy, dane zebrano z baz danych dotyczących zgonów samobójcz
 
 Następnie dane dotyczące zgonów i hospitalizacji połączono w jeden zbiór obejmujący informacje o metodzie próby samobójczej, dacie zdarzenia, jego skutku oraz cechach demograficznych osób. Zastosowano również klasyfikację metod prób samobójczych, uwzględniając m.in. zatrucia pestycydami i innymi substancjami, powieszenie, utonięcie, samookaleczenie ostrym narzędziem oraz skok z wysokości. Ostatecznie zbiór źródłowy obejmował 2571 osób.
 
-Po przeprowadzeniu wstępnego przetwarzania zbiór `SuicideChina` zawiera 2286 obserwacji i 8 zmiennych. Zmienne opisują m.in. wiek i płeć osób, poziom ich wykształcenia, kategorię zawodową, miejsce zamieszkania, hospitalizację, zgon oraz metodę podjęcia próby samobójczej.
+Po przeprowadzeniu wstępnego przetwarzania opisanego w Zadaniu 1. zbiór `SuicideChina` zawiera 2286 obserwacji i 8 zmiennych. Zmienne opisują m.in. wiek i płeć osób, poziom ich wykształcenia, kategorię zawodową, miejsce zamieszkania, informację o hospitalizacji , zgonie oraz metodę podjęcia próby samobójczej.
 
 W tabeli przedstawiono nazwy zmiennych, ich znaczenie, typ statystyczny oraz przykładowe wartości.
 
 ```{r echo=FALSE}
 Opis_danych <- data.frame(
   Zmienna = c(
-    "Hospitalised", "Died", "Urban", "Sex",
-    "Age", "Education", "Occupation", "method"
+    "Hospitalizowano", "Zgon", "Miasto", "Płeć",
+    "Wiek", "Wykształcenie", "Zawód", "Metoda"
   ),
   Opis = c(
     "Informacja o hospitalizacji osoby",
@@ -136,49 +170,414 @@ Opis_danych <- data.frame(
     "Metoda podjęcia próby samobójczej"
   ),
   Typ = c(
-    "Binarna, nominalna",
-    "Binarna, nominalna",
-    "Binarna, nominalna",
-    "Binarna, nominalna",
-    "Ilościowa, dyskretna",
-    "Jakościowa, porządkowa",
-    "Jakościowa, nominalna",
-    "Jakościowa, nominalna"
+    "Binarna",
+    "Binarna",
+    "Binarna",
+    "Nominalna",
+    "Dyskretna",
+    "Porządkowa",
+    "Nominalna",
+    "Nominalna"
   ),
   `Przykładowe wartości` = c(
     "0, 1",
     "0, 1",
-    "no, yes",
-    "female, male",
+    "0 (obszar wiejski), 1 (obszar miejski)",
+    "kobieta, mężczyzna",
     "39, 83, 60",
-    "Secondary, Tertiary",
-    "farming, household",
-    "Cutting, Hanging"
+    "niepiśmienny, podstawowe, średnie, wyższe",
+    "rolnictwo, gospodarstwo domowe",
+    "podcięcie, powieszenie"
   ),
   check.names = FALSE
 )
 
 kable(
   Opis_danych,
-  caption = "Charakterystyka zmiennych w zbiorze danych SuicideChina",
-  booktabs = TRUE,
+  caption = "Charakterystyka zmiennych w zbiorze danych",
+  booktabs = FALSE,
   row.names = FALSE
 )
 ```
 
 Źródło: Opracowanie własne na podstawie zbioru danych `SuicideChina` z pakietu `Stat2Data` oraz opis danych w pakiecie.
 
+Zmienna `Wyksztalcenie` ma charakter porządkowy, ponieważ jej kategorie można uporządkować od najniższego do najwyższego poziomu wykształcenia: `niepismienny`, `podstawowe`, `średnie`, `wyższe`. Zmienne `Plec`, `Zawod` i `Metoda` są zmiennymi nominalnymi. Zmienna `Wiek` jest zmienną ilościową dyskretną.
 
-Zmienna `Education` ma charakter porządkowy, ponieważ jej kategorie można uporządkować od najniższego do najwyższego poziomu wykształcenia: `illiterate`, `primary`, `Secondary`, `Tertiary`. Zmienne `Urban`, `Sex`, `Occupation` i `method` są nominalne, ponieważ ich kategorie nie mają naturalnej kolejności. Zmienna `Age` jest ilościowa i w analizowanym zbiorze przyjmuje wartości w pełnych latach, dlatego można ją traktować jako dyskretną.
+- `Hospitalizowany` – określa, czy osoba w wyniku próby samobójczej została hospitalizowana (1), czy nie (0).
+- `Zgon` – określa, czy próba samobójcza zakończyła się zgonem osoby (1), czy przeżyła ona próbę (0).
+- `Miasto` – określa miejsce zamieszkania osoby: miasto (1) lub wieś (0).
+- `Plec` – określa płeć osoby: kobieta lub mężczyzna.
+- `Wiek` – określa wiek osoby wyrażony w pełnych latach.
+- `Wyksztalcenie` – określa najwyższy uzyskany poziom wykształcenia osoby. Wyróżniono następujące kategorie: `niepismienny`, `podstawowe`, `średnie` oraz `wyższe`.
+- `Zawod` – określa kategorię zawodową osoby. Wyróżniono następujące kategorie: handel i usługi, rolnictwo, gospodarstwo domowe (osoby zajmujące się prowadzeniem domu, np. gospodynie domowe), wolny zawód (np. lekarz, prawnik), emeryt, uczeń/student, bezrobotny oraz robotnik.
+- `Metoda` – określa metodę podjęcia próby samobójczej. Wyróżniono następujące kategorie:
+  - `podcięcie` – podcięcie żył;
+  - `utonięcie` – próba samobójcza poprzez utonięcie;
+  - `powieszenie` – powieszenie, bez sprecyzowania, czy śmierć nastąpiła wskutek uduszenia, czy uszkodzenia rdzenia kręgowego.
+  - `skok` – upadek z wysokości;
+  - `pestycyd` – zatrucie pestycydami, czyli substancjami szeroko stosowanymi w rolnictwie do zwalczania szkodników;
+  - `inna trucizna` – zatrucie substancją toksyczną inną niż pestycyd.
 
 # Lista 2
 
-kotek
+Lista polega na przedstawieniu liczebności i częstości występowania poszczególnych kategorii zmiennych nominalnych i porządkowych, zilustrowaniu ich na wykresach oraz analizie zależności między parami zmiennych za pomocą wykresów mozaikowych. Dodatkowo należy wyznaczyć 95-procentowy przedział ufności dla prawdopodobieństwa sukcesu wybranej zmiennej binarnej.
 
 ## Zadanie 1
+
+Celem zadania jest przeprowadzenie analizy wybranych zmiennych nominalnych i porządkowych ze zbioru danych poprzez sporządzenie tabel liczności i częstości, wizualizację ich rozkładów za pomocą wykresów słupkowych lub kołowych oraz analizę zależności między parami zmiennych z wykorzystaniem wykresów mozaikowych.
+
+### Zadanie 1a
+
+Do zmiennych nominalnych należą: `Plec`, `Zawod` oraz `Metoda`. Zmienna `Wyksztalcenie` określa poziom wykształcenia. Jej kategorie mają naturalną kolejność.
+
+```{r nominalne}
+tabela_licznosci_czestosc <- function(zmienna) {
+  liczebnosci <- table(zmienna)
+  czestosci <- prop.table(liczebnosci)
+  
+  data.frame(
+    Kategoria = names(liczebnosci),
+    Liczność = as.vector(liczebnosci),
+    `Częstość [%]` = round(100 * as.vector(czestosci), 2),
+    check.names = FALSE
+  )
+}
+```
+
+kotek
+
+```{r}
+kable(tabela_licznosci_czestosc(SuicideChina$Plec), caption = "Liczność i częstość dla zmiennej Plec")
+```
+Źródło: Opracowanie własne.
+
+kotek
+
+```{r}
+kable(tabela_licznosci_czestosc(SuicideChina$Zawod), caption = "Liczność i częstość dla zmiennej Zawód")
+```
+Źródło: Opracowanie własne.
+
+kotek
+
+```{r}
+kable(tabela_licznosci_czestosc(SuicideChina$Metoda), caption = "Liczność i częstość dla zmiennej Metoda")
+```
+Źródło: Opracowanie własne.
+
+kotek
+
+```{r}
+kable(tabela_licznosci_czestosc(SuicideChina$Wyksztalcenie), caption = "Liczność i częstość dla zmiennej Wyksztalcenie")
+```
+Źródło: Opracowanie własne.
+
+kotek
+
+### Zadanie 1b
+
+kotek
+
+```{r}
+wykres_slupkowy <- function(zmienna) {
+  ggplot(data.frame(zmienna), aes(x = zmienna)) +
+    geom_bar(fill = "tomato", color = "black") +
+    labs(
+      x = "",
+      y = "Liczność"
+    ) +
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1)
+    )
+}
+```
+
+kotek
+
+```{r fig.cap="Liczności płci"}
+wykres_slupkowy(SuicideChina$Plec)
+```
+Źródło: Opracowanie własne.
+
+kotek
+
+```{r fig.cap="Liczności zawodów"}
+wykres_slupkowy(SuicideChina$Zawod)
+```
+Źródło: Opracowanie własne.
+
+kotek
+
+```{r fig.cap="Liczności metod"}
+wykres_slupkowy(SuicideChina$Metoda)
+```
+Źródło: Opracowanie własne.
+
+kotek
+
+```{r fig.cap="Liczności wykształcenia"}
+wykres_slupkowy(SuicideChina$Wyksztalcenie)
+```
+Źródło: Opracowanie własne.
+
+kotek
+
+### Zadanie 1c
+
+kotek
+
+```{r}
+wykres_mozaikowy <- function(zmienna1, zmienna2) {
+  dane <- data.frame(zmienna1, zmienna2)
+  
+  ggplot(dane, aes(x = zmienna1, fill = zmienna2)) +
+    geom_mosaic() +
+    labs(x = "", y = "", fill = "") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1),
+          legend.position = "bottom")
+}
+```
+
+```{r fig.cap="Mozaika płeć vs zawód"}
+wykres_mozaikowy(SuicideChina$Plec, SuicideChina$Zawod)
+```
+Źródło: Opracowanie własne.
+
+kotek
+
+```{r fig.cap="Mozaika płeć vs metoda"}
+wykres_mozaikowy(SuicideChina$Plec, SuicideChina$Metoda)
+```
+Źródło: Opracowanie własne.
+
+kotek
+
+```{r fig.cap="Mozaika płeć vs wykształcenie"}
+wykres_mozaikowy(SuicideChina$Plec, SuicideChina$Wyksztalcenie)
+```
+Źródło: Opracowanie własne.
+
+kotek
+
+```{r fig.cap="Mozaika zawód vs metoda"}
+wykres_mozaikowy(SuicideChina$Zawod, SuicideChina$Metoda)
+```
+Źródło: Opracowanie własne.
+
+kotek
+
+```{r fig.cap="Mozaika zawód vs wykształcenie"}
+wykres_mozaikowy(SuicideChina$Zawod, SuicideChina$Wyksztalcenie)
+```
+Źródło: Opracowanie własne.
+
+kotek
+
+```{r fig.cap="Mozaika metoda vs wykształcenie"}
+wykres_mozaikowy(SuicideChina$Metoda, SuicideChina$Wyksztalcenie)
+```
+Źródło: Opracowanie własne.
 
 kotek
 
 ## Zadanie 2
+
+Celem zadania jest wyznaczenie realizacja 95-procentowego przedziału ufności dla prawdopodobieństwa wystąpienia jednej z dwóch wartości (sukcesu) wybranej zmiennej binarnej.
+
+Na podstawie przeprowadzonych symulacji stwierdzono, że dla liczności próby odpowiadającej analizowanemu zbiorowi danych metoda Cloppera-Pearsona zapewnia najwyższe prawdopodobieństwo pokrycia oraz najwęższe przedziały ufności. W związku z tym metodę tę wykorzystano w dalszej analizie.
+
+```{r eval=FALSE}
+# prawdopodobieństwa pokrycia i oczekiwanej długości przedziałów ufności Cloppera-Pearsona, Walda i Wilsona.
+rozmiar_proby <- c(2286)
+prawd_p <- c(.1, .5, .9)
+
+poz_ufnosci <- .95
+
+M <- 10000
+
+# rbinom(M, n, p) zwróci M realizacji próby długości n o prawd sukcesu p
+# wynikiem jest wektor liczby sukcesów w każdej realizacji próby
+
+# Dwie macierze, na pokrycie i oczekiwaną długość
+# Badamy 3 metody, 4 rozmiary próby i 3 prawdopodobieństwa. Daje to 36 kombinacji
+
+metody <- c('exact','asymptotic', 'wilson')
+nazwy_metod <- c("Clopper-Pearson", "Wald", "Wilson")
+
+podsumowanie_symulacji_przedzialy <- data.frame()
+
+for (i in seq_along(rozmiar_proby)){
+    n <- rozmiar_proby[i]
+    
+  for (j in seq_along(prawd_p)){
+    p <- prawd_p[j]
+
+    realizacje_proby <- rbinom(M,n,p) 
+
+    realizacje_przedzialow <- binom.confint(realizacje_proby, n, conf.level = .95, methods = metody)
+    
+    # Kolejno dla każdej metody
+    for (indeks_m in seq_along(metody)){
+      obecna_metoda <- metody[indeks_m]
+      nazwa_obecnej_metody <- nazwy_metod[indeks_m]
+      
+      realizacje_obecnej_metody <- realizacje_przedzialow[realizacje_przedzialow$method == obecna_metoda,]
+    
+    # Dla każdej realizacji sprawdzamy:
+    
+    # Symulacyjnie - oczekiwana długość i pokrycie 
+    oczekiwana_dlugosc <- mean(realizacje_obecnej_metody$upper - realizacje_obecnej_metody$lower)
+    
+    szacowane_pokrycie <- mean(p>=realizacje_obecnej_metody$lower & p<=realizacje_obecnej_metody$upper)
+    
+    # Teoretycznie - funkcją binom.coverage
+    pokrycie_bi_coverage <- binom.coverage(p = p, n = n, conf.level = .95, method = obecna_metoda)$coverage
+    
+    wynik_dla_metody <- data.frame(
+      n=n,
+      p=p,
+      Metoda = nazwa_obecnej_metody,
+      Pokrycie_Symulacja = round(szacowane_pokrycie,4),
+      Pokrycie_binom= round(pokrycie_bi_coverage,4),
+      Srednia_Dlugosc = round(oczekiwana_dlugosc,4)
+    )
+    podsumowanie_symulacji_przedzialy <- rbind(podsumowanie_symulacji_przedzialy, wynik_dla_metody)
+    }
+    
+  }
+}
+
+View(podsumowanie_symulacji_przedzialy)
+podsumowanie_symulacji_przedzialy
+```
+
+Przyjęto, że sukcesem jest wystąpienie zgonu osoby w wyniku próby samobójczej lub jej hospitalizacja. W związku z tym wartość 1 w obu zmiennych oznacza sukces, natomiast wartość 0 – jego brak.
+
+```{r}
+wynik_zgon <- binom.confint(
+  x = sum(SuicideChina$Zgon),
+  n = length(SuicideChina$Zgon),
+  conf.level = 0.95,
+  methods = "exact"
+)
+
+wynik_hospitalizowano <- binom.confint(
+  x = sum(SuicideChina$Hospitalizowano),
+  n = length(SuicideChina$Hospitalizowano),
+  conf.level = 0.95,
+  methods = "exact"
+)
+
+tabela <- data.frame(
+  Zmienna = c("Zgon", "Hospitalizowano"),
+  Prawdopodobieństwo = c(wynik_zgon$mean, wynik_hospitalizowano$mean),
+  `Dolna granica` = c(wynik_zgon$lower, wynik_hospitalizowano$lower),
+  `Górna granica` = c(wynik_zgon$upper, wynik_hospitalizowano$upper)
+)
+
+kable(tabela, digits = 4, caption = "Realizacja 95-procentowych przedziały ufności dla prawdopodobieństwa sukcesu metodą Cloppera-Pearsona")
+```
+Źródło: Opracowanie własne.
+
+kotek
+
+# Lista 3
+
+Lista polega na porównaniu dwóch estymatorów prawdopodobieństwa sukcesu za pomocą symulacji, ocenie ich obciążenia i błędów średniokwadratowych, a także przeprowadzeniu testów statystycznych dotyczących pojedynczego prawdopodobieństwa sukcesu oraz równości dwóch prawdopodobieństw sukcesu.
+
+## Zadanie 1
+
+Zadanie polega na porównaniu dwóch estymatorów prawdopodobieństwa sukcesu w mechanizmie odpowiedzi losowej za pomocą symulacji. Należy zbadać ich obciążenie i błędy średniokwadratowe dla różnych wartości parametrów $\pi$, $q$ i liczebności próby $n$, a następnie porównać wyniki symulacyjne z wartościami teoretycznymi.
+
+Przeprowadzono symulację obejmującą 100 000 prób dla następujących wartości parametrów: $\pi \in \{0.2, 0.5, 0.8\}$, $q \in \{0.3, 0.7, 0.9\}$ oraz $n \in \{10, 50, 100, 1000\}$. Wyniki symulacji przedstawiono w tabeli poniżej.
+
+```{r}
+pi_wartosci <- c(0.2, 0.5, 0.8)
+q_wartosci <- c(0.3, 0.7, 0.9)
+n_wartosci <- c(10, 50, 100, 1000)
+
+B <- 100000
+
+wyniki <- data.frame()
+
+for (pi in pi_wartosci) {
+  for (q in q_wartosci) {
+    for (n in n_wartosci) {
+      # Prawdopodobieństwo pozytywnej odpowiedzi
+      p <- pi * q + (1 - pi) * (1 - q)
+      
+      # Symulacja średnich odpowiedzi
+      p_hat <- rbinom(B, n, p) / n
+      
+      # Estymator klasyczny
+      pi_hat <- (p_hat + q - 1) / (2 * q - 1)
+      
+      # Estymator ograniczony do przedziału [0, 1]
+      pi_tilde <- pmin(pmax(pi_hat, 0), 1)
+      
+      # Obciążenie
+      bias_hat <- mean(pi_hat) - pi
+      bias_tilde <- mean(pi_tilde) - pi
+      
+      # Błąd średniokwadratowy
+      mse_hat <- mean((pi_hat - pi)^2)
+      mse_tilde <- mean((pi_tilde - pi)^2)
+      
+      # Wartości teoretyczne dla estymatora klasycznego
+      bias_teor <- 0
+      mse_teor <- p * (1 - p) / (n * (2 * q - 1)^2)
+      
+      wyniki <- rbind(
+        wyniki,
+        data.frame(
+          pi = pi,
+          q = q,
+          n = n,
+          Bias_hat = bias_hat,
+          Bias_tilde = bias_tilde,
+          MSE_hat = mse_hat,
+          MSE_tilde = mse_tilde,
+          Bias_teor = bias_teor,
+          MSE_teor = mse_teor
+        )
+      )
+    }
+  }
+}
+```
+
+```{r}
+kable(
+  wyniki,
+  digits = 4,
+  col.names = c(
+    "$\\pi$",
+    "$q$",
+    "$n$",
+    "$Bias(\\hat{\\pi})$",
+    "$Bias(\\tilde{\\pi})$",
+    "$MSE(\\hat{\\pi})$",
+    "$MSE(\\tilde{\\pi})$",
+    "$Bias_{teor}(\\hat{\\pi})$",
+    "$MSE_{teor}(\\hat{\\pi})$"
+  ),
+  caption = "Porównanie estymatorów prawdopodobieństwa sukcesu na podstawie symulacji"
+)
+```
+
+Źródło: Opracowanie własne.
+
+Na podstawie Tabeli 7. można stwierdzić, że MSE estymatora $\tilde{\pi}$ jest zawsze nie większe niż MSE estymatora $\hat{\pi}$. Wraz ze wzrostem liczebności próby $n$ maleje MSE obu estymatorów. Jednocześnie obciążenie estymatora $\tilde{\pi}$ zbliża się do zera, co jest zgodne z jego asymptotyczną nieobciążonością. Obciążenie estymatora $\hat{\pi}$ oscyluje natomiast wokół teoretycznej wartości równej zero. Przy tak dużej liczbie symulacji (100 000) symulacyjne MSE estymatora $\hat{\pi}$ jest zgodne z wartością teoretyczną z dokładnością do trzeciego miejsca po przecinku.
+
+Najważniejszy wniosek jest taki, że mimo iż estymator $\hat{\pi}$ jest nieobciążony, a estymator $\tilde{\pi}$ jest jedynie asymptotycznie nieobciążony, to dla wszystkich rozważanych kombinacji parametrów symulacyjnych MSE estymatora $\tilde{\pi}$ nie przekracza MSE estymatora $\hat{\pi}$.
+
+## Zadanie 2
+
+kotek
+
+## Zadanie 3
 
 kotek
