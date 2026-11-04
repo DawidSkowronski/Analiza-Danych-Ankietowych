@@ -204,20 +204,20 @@ kable(
 
 Zmienna `Wyksztalcenie` ma charakter porządkowy, ponieważ jej kategorie można uporządkować od najniższego do najwyższego poziomu wykształcenia: `niepismienny`, `podstawowe`, `średnie`, `wyższe`. Zmienne `Plec`, `Zawod` i `Metoda` są zmiennymi nominalnymi. Zmienna `Wiek` jest zmienną ilościową dyskretną.
 
-- `Hospitalizowany` – określa, czy osoba w wyniku próby samobójczej została hospitalizowana (1), czy nie (0).
-- `Zgon` – określa, czy próba samobójcza zakończyła się zgonem osoby (1), czy przeżyła ona próbę (0).
-- `Miasto` – określa miejsce zamieszkania osoby: miasto (1) lub wieś (0).
-- `Plec` – określa płeć osoby: kobieta lub mężczyzna.
-- `Wiek` – określa wiek osoby wyrażony w pełnych latach.
-- `Wyksztalcenie` – określa najwyższy uzyskany poziom wykształcenia osoby. Wyróżniono następujące kategorie: `niepismienny`, `podstawowe`, `średnie` oraz `wyższe`.
-- `Zawod` – określa kategorię zawodową osoby. Wyróżniono następujące kategorie: handel i usługi, rolnictwo, gospodarstwo domowe (osoby zajmujące się prowadzeniem domu, np. gospodynie domowe), wolny zawód (np. lekarz, prawnik), emeryt, uczeń/student, bezrobotny oraz robotnik.
-- `Metoda` – określa metodę podjęcia próby samobójczej. Wyróżniono następujące kategorie:
-  - `podcięcie` – podcięcie żył;
-  - `utonięcie` – próba samobójcza poprzez utonięcie;
-  - `powieszenie` – powieszenie, bez sprecyzowania, czy śmierć nastąpiła wskutek uduszenia, czy uszkodzenia rdzenia kręgowego.
-  - `skok` – upadek z wysokości;
-  - `pestycyd` – zatrucie pestycydami, czyli substancjami szeroko stosowanymi w rolnictwie do zwalczania szkodników;
-  - `inna trucizna` – zatrucie substancją toksyczną inną niż pestycyd.
+- `Hospitalizowany` - określa, czy osoba w wyniku próby samobójczej została hospitalizowana (1), czy nie (0).
+- `Zgon` - określa, czy próba samobójcza zakończyła się zgonem osoby (1), czy przeżyła ona próbę (0).
+- `Miasto` - określa miejsce zamieszkania osoby: miasto (1) lub wieś (0).
+- `Plec` - określa płeć osoby: kobieta lub mężczyzna.
+- `Wiek` - określa wiek osoby wyrażony w pełnych latach.
+- `Wyksztalcenie` - określa najwyższy uzyskany poziom wykształcenia osoby. Wyróżniono następujące kategorie: `niepismienny`, `podstawowe`, `średnie` oraz `wyższe`.
+- `Zawod` - określa kategorię zawodową osoby. Wyróżniono następujące kategorie: handel i usługi, rolnictwo, gospodarstwo domowe (osoby zajmujące się prowadzeniem domu, np. gospodynie domowe), wolny zawód (np. lekarz, prawnik), emeryt, uczeń/student, bezrobotny oraz robotnik.
+- `Metoda` - określa metodę podjęcia próby samobójczej. Wyróżniono następujące kategorie:
+  - `podcięcie` - podcięcie żył;
+  - `utonięcie` - próba samobójcza poprzez utonięcie;
+  - `powieszenie` - powieszenie, bez sprecyzowania, czy śmierć nastąpiła wskutek uduszenia, czy uszkodzenia rdzenia kręgowego.
+  - `skok` - upadek z wysokości;
+  - `pestycyd` - zatrucie pestycydami, czyli substancjami szeroko stosowanymi w rolnictwie do zwalczania szkodników;
+  - `inna trucizna` - zatrucie substancją toksyczną inną niż pestycyd.
 
 # Lista 2
 
@@ -454,7 +454,7 @@ View(podsumowanie_symulacji_przedzialy)
 podsumowanie_symulacji_przedzialy
 ```
 
-Przyjęto, że sukcesem jest wystąpienie zgonu osoby w wyniku próby samobójczej lub jej hospitalizacja. W związku z tym wartość 1 w obu zmiennych oznacza sukces, natomiast wartość 0 – jego brak.
+Przyjęto, że sukcesem jest wystąpienie zgonu osoby w wyniku próby samobójczej lub jej hospitalizacja. W związku z tym wartość 1 w obu zmiennych oznacza sukces, natomiast wartość 0 - jego brak.
 
 ```{r}
 wynik_zgon <- binom.confint(
@@ -576,8 +576,63 @@ Najważniejszy wniosek jest taki, że mimo iż estymator $\hat{\pi}$ jest nieobc
 
 ## Zadanie 2
 
-kotek
+Zweryfikowano czy prawdopodobieństwo hospitalizacji w wyniku próby samobójczej wynosi 50%.
+
+Sformułowano następujące hipotezy:
+$$
+H_0:p=0,5
+$$
+
+$$
+H_1:p\neq 0,5
+$$
+,gdzie p oznacza prawdopodobieństwo hospitalizacji w wyniku próby samobójczej.
+
+Do weryfikacji hipotez zastosowano dokładny test dwumianowy (dwustronny) na poziomie istotności $\alpha = 0.05$. Przyjęcie hipotezy zerowej jako punktu odniesienia pozwala sprawdzić, czy częstość hospitalizacji istotnie odbiega od połowy wszystkich odnotowanych przypadków (bo czemu by nie).
+
+```{r}
+x <- sum(SuicideChina$Hospitalizowano)
+n <- length(SuicideChina$Hospitalizowano)
+
+test <- binom.test(x, n, 0.5, alternative = "two.sided")
+#test
+```
+
+Wartość p-value jest mniejsza niż 0,001, a więc jest niższa od przyjętego poziomu istotności $\alpha=0,05$. W związku z tym odrzucamy hipotezę zerową na rzecz hipotezy alternatywnej. Oznacza to, że istnieją statystycznie istotne podstawy do stwierdzenia, że prawdopodobieństwo hospitalizacji w wyniku próby samobójczej różni się od 50%.
+
 
 ## Zadanie 3
 
-kotek
+Sprawdzono czy prawdopodobieństwo zgonu w wyniku próby samobójczej jest takie samo dla kobiet i mężczyzn.
+
+Sformułowano następujące hipotezy:
+$$
+H_0:p_K=p_M
+$$
+
+$$
+H_1:p_K\neq p_M
+$$
+,gdzie $p_K$ -- prawdopodobieństwo zgonu wśród kobiet oraz $p_M$ - prawdopodobieństwo zgonu wśród mężczyzn.
+
+Do weryfikacji hipotez zastosowano asymptotyczny test równości dwóch proporcji, oparty na statystyce $U$ o rozkładzie asymptotycznie normalnym standardowym przy prawdziwości hipotezy zerowej. Test przeprowadzono na poziomie istotności $\alpha = 0.05$
+
+```{r}
+xK <- sum(SuicideChina$Zgon[SuicideChina$Plec == "kobieta"] == 1)
+xM <- sum(SuicideChina$Zgon[SuicideChina$Plec == "mężczyzna"] == 1)
+
+nK <- sum(SuicideChina$Plec == "kobieta")
+nM <- sum(SuicideChina$Plec == "mężczyzna")
+
+test <- prop.test(
+  x = c(xK, xM),
+  n = c(nK, nM),
+  alternative = "two.sided",
+  correct = FALSE
+)
+
+test
+```
+Wartość p-value jest mniejsza niż 0,001, a więc jest niższa od przyjętego poziomu istotności $\alpha=0,05$. W związku z tym odrzucamy hipotezę zerową na rzecz hipotezy alternatywnej. Oznacza to, że istnieją statystycznie istotne podstawy do stwierdzenia, że prawdopodobieństwo zgonu różni się między kobietami a mężczyznami.
+
+
