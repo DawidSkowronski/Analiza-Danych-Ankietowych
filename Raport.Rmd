@@ -636,3 +636,59 @@ test
 Wartość p-value jest mniejsza niż 0,001, a więc jest niższa od przyjętego poziomu istotności $\alpha=0,05$. W związku z tym odrzucamy hipotezę zerową na rzecz hipotezy alternatywnej. Oznacza to, że istnieją statystycznie istotne podstawy do stwierdzenia, że prawdopodobieństwo zgonu różni się między kobietami a mężczyznami.
 
 
+\newpage
+# Lista 4
+
+Lista polega na napisaniu funkcji realizującej test Cressie’a-Reada, a następnie wykorzystaniu jej do sprawdzenia niezależności dwóch wybranych zmiennych w zbiorze danych.
+
+## Zadanie 1
+
+Zadanie polega na  napisaniu funkcji, która przyjmuje macierz tabeli kontyngencji oraz parametr $\lambda$, a następnie oblicza statystykę testową $I^\lambda$ i wartość p-value.
+
+```{r echo=TRUE}
+
+I_lambda <- function(matrix, lambda) {
+  return(1)
+}
+
+```
+
+kotek
+
+## Zadanie 2
+
+Zadanie polega na weryfikacji hipotezy o niezalezności dwóch zmiennych `abc` oraz `abc`.
+
+kotek
+
+\newpage
+# Lista 5
+
+Lista polega na analizie zależności między trzema zmiennymi za pomocą paradoksu Simpsona, modeli log-liniowych oraz testowania hipotez o niezależności i wyborze najlepszego modelu.
+
+## Zadanie 1
+
+Zadanie polega na sprawdzeniu, czy dla wybranych trzech zmiennych zachodzi paradoks Simpsona. Wybrano zmienne A, B i C. W razie potrzeby należy połączyć sąsiednie kategorie odpowiedzi, a następnie przeanalizować częstości i wykonać odpowiedni test statystyczny.
+
+kotek
+
+## Zadanie 2
+
+Zadanie polega na interpretacji sześciu wskazanych modeli log-liniowych dla trzech zmiennych A, B i C. Należy wyjaśnić, jakie zależności między zmiennymi opisuje każdy z modeli.
+
+kotek
+
+## Zadanie 3
+
+Zadanie polega na zweryfikowaniu trzech hipotez dotyczących zależności między zmiennymi A, B i C:
+- Wzajemnej niezależności wszystkich trzech zmiennych.
+- Niezależności zmiennej A od zmiennych B i C, przy jednoczesnej zależności B i C.
+- Warunkowej niezależności zmiennych A i B pod warunkiem C.
+
+kotek
+
+## Zadanie 4 – Wybór najlepszego modelu
+
+Zadanie polega na wybraniu najlepszego modelu log-liniowego dla trzech zmiennych A, B i C, osobno na podstawie kryteriów AIC i BIC. Następnie przedstawiono oszacowania parametrów wybranego modelu oraz obliczono oszacowane prawdopodobieństwa $p_{ijk}$ dla wszystkich możliwych kombinacji wartości tych zmiennych.
+
+kotek
