@@ -1,4 +1,82 @@
+library(Stat2Data)
+library(dplyr)
 
+#### Dane #####
+
+#SuicideChina <- read.csv('SuicideChina.csv')
+data(SuicideChina)
+
+SuicideChina <- SuicideChina |>
+  select(-Person_ID, -Year, -Month) |>
+  mutate(
+    Education = recode(Education, "iliterate" = "illiterate")
+  ) |>
+  filter(
+    Urban != "unknown",
+    Education != "unknown",
+    Occupation != "others/unknown",
+    Occupation != "others",
+    method != "Others",
+    method != "unspecified"
+  ) |>
+  mutate(
+    Hospitalised = recode(Hospitalised, "yes" = 1L, "no" = 0L),
+    Died = recode(Died, "yes" = 1L, "no" = 0L),
+    method = recode(method, "Poison unspec" = "Other poison"),
+    Education = factor(
+      Education,
+      levels = c("illiterate", "primary", "Secondary", "Tertiary"),
+      ordered = TRUE
+    )
+  ) |>
+  mutate(
+    across(where(is.factor), droplevels)
+  ) |>
+  rename(
+    Hospitalizowano = Hospitalised,
+    Zgon = Died,
+    Miasto = Urban,
+    Plec = Sex,
+    Wiek = Age,
+    Wyksztalcenie = Education,
+    Zawod = Occupation,
+    Metoda = method
+  ) |>
+  mutate(
+    Miasto = recode(Miasto, "no" = 0L, "yes" = 1L),
+    Plec = recode(Plec, "female" = "kobieta", "male" = "mężczyzna"),
+    Wyksztalcenie = factor(
+      recode(
+        as.character(Wyksztalcenie),
+        "illiterate" = "niepiśmienny",
+        "primary" = "podstawowe",
+        "Secondary" = "średnie",
+        "Tertiary" = "wyższe"
+      ),
+      levels = c("niepiśmienny", "podstawowe", "średnie", "wyższe"),
+      ordered = TRUE
+    ),
+    Zawod = recode(
+      Zawod,
+      "business/service" = "handel/usługi",
+      "farming" = "rolnictwo",
+      "household" = "gospodarstwo domowe",
+      "professional" = "wolny zawód",
+      "retiree" = "emeryt",
+      "student" = "uczeń/student",
+      "unemployed" = "bezrobotny",
+      "worker" = "robotnik"
+    ),
+    Metoda = recode(
+      Metoda,
+      "Cutting" = "podcięcie",
+      "Drowning" = "utonięcie",
+      "Hanging" = "powieszenie",
+      "Jumping" = "skok",
+      "Other poison" = "inna trucizna",
+      "Pesticide" = "pestycyd"
+    )
+  )
 
 ###### Zadanie 3 ########
 
@@ -169,4 +247,98 @@ test_iw_dwie_proby(50,30,
                    100,100)
 
 prop.test(x = c(50,30), n = c(100,100), alternative = 'two.sided')
+
+
+# =================== #
+  #### Lista 4 #####
+# =================== #
+
+#### Lista 4 Zadanie 1 ####
+
+test_creesie_reed <- function(tabela, lambda = 2/3){
+  
+  R <- nrow(tabela)
+  C <- ncol(tabela)
+  n <- sum(tabela)
+  # O = n_ij - observed (czyli komórka w tabeli kontyngencji)
+  # E = n_i+ * n_+j / n = n*hat_p_ij^(H0)- expected
+    # hat_p_ij^(H0) to estymator NW prawdopodobieństwa w i-tej komórce,
+    # przy prawdziwości H0
+  E <- outer(rowSums(tabela), colSums(tabela)) / n
+  
+  if (lambda == 0){
+  # Gdy lambda równa 0  
+    statystyka_I <-  2*sum(tabela * log(tabela / E))
+    
+  }else if (lambda == -1){
+  # Gdy lambda równa -1 
+    statystyka_I <-  2*sum(E * log(E / tabela))
+    
+  } else {
+  # Gdy lambda różna od {0, -1}
+    statystyka_I <- 2/(lambda*(lambda+1)) * sum(tabela * ((tabela/E)^lambda-1))
+}
+  
+  k <- R*C # liczba możliwych zestawów odpowiedzi
+  q <- (R-1) + (C-1) # liczba estymowanych parametrów
+  
+  # Liczba stopni swobody
+  df <- k-q-1
+  p_wartosc <- 1- pchisq(statystyka_I, df = df)
+  
+  # Funkcja zwraca wartość statystyki testowej I_lambda oraz p-wartość
+  return(data.frame(
+    Lambda = lambda,
+    Statystyka_I = round(statystyka_I, 4),
+    Stopnie_swobody = df,
+    p_value = p_wartosc
+  ))
+}
+
+
+#### Lista 4 Zadanie 2 ####
+
+# Załóżmy lambda = 2/3 - sugestia autorów
+
+# Tabela zgony od wykształcenia
+tabela_zgon_wyksztalcenie <- table(SuicideChina$Zgon, SuicideChina$Wyksztalcenie)
+tabela_zgon_wyksztalcenie
+
+wynik_testu_CR <- test_creesie_reed(tabela_zgon_wyksztalcenie, lambda = 2/3)
+wynik_testu_CR
+
+
+# Tabela hospitalizowano od wykształcenie
+
+tabela_hospitalizacja_wyksztalcenie <- table(SuicideChina$Hospitalizowano, SuicideChina$Wyksztalcenie)
+tabela_hospitalizacja_wyksztalcenie
+test_creesie_reed(tabela_hospitalizacja_wyksztalcenie, lambda = 2/3)
+
+# Tabela Zgon vs Metoda
+
+tabela_zgon_metoda <- table(SuicideChina$Zgon, SuicideChina$Metoda)
+tabela_zgon_metoda # Występują zera dla utonięcia
+test_creesie_reed(tabela_zgon_metoda, lambda = 2/3)
+
+# Tabela Zgon vs Miasto
+
+tabela_zgon_miasto <- table(SuicideChina$Zgon, SuicideChina$Miasto)
+tabela_zgon_miasto
+
+test_creesie_reed(tabela_zgon_miasto, lambda = 2/3)
+test_creesie_reed(tabela_zgon_miasto, lambda = -1/2)
+
+
+# Tabela Zgon vs Płeć
+
+tabela_zgon_plec <- table(SuicideChina$Zgon, SuicideChina$Plec)
+tabela_zgon_plec
+
+test_creesie_reed(tabela_zgon_plec, lambda = 2/3)
+
+# Tabela Zgon vs Zawod
+tabela_zgon_zawod <- table(SuicideChina$Zgon, SuicideChina$Zawod)
+tabela_zgon_zawod # Trzeba połączyć jakoś emeryt, robotnik z innymi kategoriami
+
+test_creesie_reed(tabela_zgon_zawod, lambda = 2/3)
 
