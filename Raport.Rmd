@@ -33,7 +33,8 @@ knitr::opts_chunk$set(
   dpi = 1200,
   fig.width = 6,
   fig.height = 3.5,
-  echo = FALSE # important
+  echo = FALSE, # important
+  cache = TRUE
 )
 
 # ZMNIEJSZENIE FONTÓW GLOBALNIE
@@ -46,6 +47,9 @@ theme_set(
       legend.title = element_text(size = 8)
     )
 )
+
+ziarno <- 282241 + 258882
+set.seed(ziarno)
 ```
 
 \newpage
@@ -549,6 +553,8 @@ for (pi in pi_wartosci) {
 }
 ```
 
+\newpage
+
 ```{r}
 kable(
   wyniki,
@@ -633,6 +639,7 @@ test <- prop.test(
 
 test
 ```
+
 Wartość p-value jest mniejsza niż 0,001, a więc jest niższa od przyjętego poziomu istotności $\alpha=0,05$. W związku z tym odrzucamy hipotezę zerową na rzecz hipotezy alternatywnej. Oznacza to, że istnieją statystycznie istotne podstawy do stwierdzenia, że prawdopodobieństwo zgonu różni się między kobietami a mężczyznami.
 
 
@@ -647,19 +654,64 @@ Zadanie polega na  napisaniu funkcji, która przyjmuje macierz tabeli kontyngenc
 
 ```{r echo=TRUE}
 
-I_lambda <- function(matrix, lambda) {
-  return(1)
+test_creesie_reed <- function(tabela, lambda = 2/3){
+  
+  R <- nrow(tabela)
+  C <- ncol(tabela)
+  n <- sum(tabela)
+
+  E <- outer(rowSums(tabela), colSums(tabela)) / n
+  
+  if (lambda == 0){
+    statystyka_I <-  2*sum(tabela * log(tabela / E))
+    
+  }else if (lambda == -1){
+    statystyka_I <-  2*sum(E * log(E / tabela))
+    
+  } else {
+    statystyka_I <- 2/(lambda*(lambda+1)) * sum(tabela * ((tabela/E)^lambda-1))
+}
+  
+  k <- R*C
+  q <- (R-1) + (C-1)
+  
+  df <- k-q-1
+  p_wartosc <- 1- pchisq(statystyka_I, df = df)
+  
+  return(data.frame(
+    Lambda = lambda,
+    Statystyka_I = round(statystyka_I, 4),
+    Stopnie_swobody = df,
+    p_value = p_wartosc
+  ))
 }
 
 ```
 
-kotek
+
 
 ## Zadanie 2
 
-Zadanie polega na weryfikacji hipotezy o niezalezności dwóch zmiennych `abc` oraz `abc`.
+Zadanie polega na weryfikacji hipotezy o niezależności dwóch wybranych zmiennych ze zbioru danych. Do weryfikacji wykorzystamy statystykę z rodziny statystyk Creesie'a-Reada $I^{2/3}$ (wartość zaproponowana przez autorów statystyki).
 
-kotek
+Weryfikujemy hipotezę zerową, na poziomie istotności $\alpha=0,05$ że prawdopodobieństwo zgonu jest takie same w każdej grupie, niezależnie od poziomu wykształcenia.
+
+```{r, warning=FALSE}
+tabela_zgon_wyksztalcenie <- table(SuicideChina$Zgon, SuicideChina$Wyksztalcenie, dnn = c('Zgon', 'Wykształcenie'))
+rownames(tabela_zgon_wyksztalcenie) <- c('Nie', 'Tak')
+
+kable(tabela_zgon_wyksztalcenie, row.names = TRUE) %>%
+  add_header_above(c("Zgon" = 1, "Wykształcenie" = ncol(tabela_zgon_wyksztalcenie)))
+```
+
+
+```{r, warning=FALSE}
+wynik_testu_CR <- test_creesie_reed(tabela_zgon_wyksztalcenie, lambda = 2/3)
+wynik_testu_CR_p_value <- round(wynik_testu_CR$p_value,4)
+```
+
+Wartość p-value jest równa `r wynik_testu_CR_p_value`, więc jest niższa od przyjętego poziomu istotności $\alpha=0,05$. Zatem odrzucamy hipotezę zerową na rzecz hipotezy alternatywnej. Oznacza to, że istnieją statystycznie istotne podstawy do stwierdzenia, że prawdopodobieństwo zgonu różni się w poszczególnych grupach o różnym poziomie wykształcenia.
+
 
 \newpage
 # Lista 5
@@ -670,13 +722,32 @@ Lista polega na analizie zależności między trzema zmiennymi za pomocą parado
 
 Zadanie polega na sprawdzeniu, czy dla wybranych trzech zmiennych zachodzi paradoks Simpsona. Wybrano zmienne A, B i C. W razie potrzeby należy połączyć sąsiednie kategorie odpowiedzi, a następnie przeanalizować częstości i wykonać odpowiedni test statystyczny.
 
-kotek
+```{r}
+
+dane_lista5 <- SuicideChina
+
+table(dane_lista5$Wyksztalcenie)
+
+# Łączymy niepiśmienny + podstawowe i średnie + wyższe
+# Tworzymy nową zmienną w danych
+
+dane_lista5$Wyksztalcenie_zgrupowane <- ifelse(
+  dane_lista5$Wyksztalcenie%in% c('niepiśmienny', 'podstawowe'),
+  'niskie',
+  'wysokie')
+
+# Zamiana na faktor
+dane_lista5$Wyksztalcenie_zgrupowane <- factor(
+  dane_lista5$Wyksztalcenie_zgrupowane, levels = c('niskie','wysokie'))
+
+```
+
 
 ## Zadanie 2
 
 Zadanie polega na interpretacji sześciu wskazanych modeli log-liniowych dla trzech zmiennych A, B i C. Należy wyjaśnić, jakie zależności między zmiennymi opisuje każdy z modeli.
 
-kotek
+
 
 ## Zadanie 3
 
@@ -685,10 +756,8 @@ Zadanie polega na zweryfikowaniu trzech hipotez dotyczących zależności międz
 - Niezależności zmiennej A od zmiennych B i C, przy jednoczesnej zależności B i C.
 - Warunkowej niezależności zmiennych A i B pod warunkiem C.
 
-kotek
 
 ## Zadanie 4 – Wybór najlepszego modelu
 
 Zadanie polega na wybraniu najlepszego modelu log-liniowego dla trzech zmiennych A, B i C, osobno na podstawie kryteriów AIC i BIC. Następnie przedstawiono oszacowania parametrów wybranego modelu oraz obliczono oszacowane prawdopodobieństwa $p_{ijk}$ dla wszystkich możliwych kombinacji wartości tych zmiennych.
 
-kotek
