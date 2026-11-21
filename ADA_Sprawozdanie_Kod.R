@@ -451,9 +451,9 @@ test_M
 
 # Tworzymy tabelę z trzema pytaniami
 
-tab_zgon_plec_edukacja <- table(dane_lista5$Plec,
-                                     dane_lista5$Zgon,
-                                     dane_lista5$Wyksztalcenie_zgrupowane)
+tab_zgon_plec_edukacja <- table(dane_lista5$Zgon,
+                                dane_lista5$Plec,
+                                dane_lista5$Wyksztalcenie_zgrupowane)
 
 
 # a) H0: M = [1 2 3]
@@ -482,6 +482,10 @@ model_c_loglin <- loglin(tab_zgon_plec_edukacja, margin = list(c(1,3),c(2,3)),
 
 c_pval <- 1 - pchisq(model_c_loglin$lrt, df = model_c_loglin$df)
 c_pval
+
+
+model_pelny <- loglin(tab_zgon_plec_edukacja, margin = list(c(1,2,3)),
+                      param = TRUE, fit = TRUE) 
 
 # We wszystkich 3 hipotezach odrzucamy H0
 # Oznacza to, że przyjęcie założenia o całkowitej, wzajemnej niezależności Zgonu, Płci i Wykształcenia
@@ -588,10 +592,9 @@ p_val_diff
 # Później wracamy do loglin() aby mieć interpretację identyczną jak w 
 
 # Tabela z pierszej wersji
-tab_zgon_plec_edukacja <- table(dane_lista5$Plec,
-                                dane_lista5$Zgon,
+tab_zgon_plec_edukacja <- table(dane_lista5$Zgon,
+                                dane_lista5$Plec,
                                 dane_lista5$Wyksztalcenie_zgrupowane)
-
 
 # Ze skryptu: w praktyce modele log-liniowe stosuje się najczęściej do zmiennych
 # losowych o rozkładzie Poissona lub współrzędnych wektora o rozkładzie wielomianowym
@@ -611,7 +614,6 @@ summary(najlepszy_aic)
 # Wybór według BIC
 najlepszy_bic <- step(model_pelny, direction = 'backward', k=log(sum(df_tab$Freq))) # k=log(n) domyślna kara dla BIC
 summary(najlepszy_bic)
-
 
 
 # Najlepszy model AIC to [12 23] 
@@ -635,6 +637,168 @@ liczba_badanych <- sum(tab_zgon_plec_edukacja)
 p_ijk <- oczekiwane_licznosci/liczba_badanych
 round(p_ijk,4)
 
+podsumowanie_AIC <- df_tab
+podsumowanie_AIC$oszacowanie_prawd
+
 # Prawdopodobieństwo wylosowania kobiety z niskim wykształceniem, która zmarła, wynosi około 18,8%
 # Prawdopodobieństwo wylosowania mężczyzny z niskim wykształceniem, który zmarł, wynosi około 21,1%
 
+
+
+
+####### Lista 5 - druga metoda ########
+tab_zgon_plec_edukacja <- table(dane_lista5$Zgon,
+                                dane_lista5$Plec,
+                                dane_lista5$Wyksztalcenie_zgrupowane)
+
+df_tab <- as.data.frame(tab_zgon_plec_edukacja)
+colnames(df_tab) <- c("Plec", "Zgon", "Wyksztalcenie", 'Freq')
+df_tab # Freq to liczność w każdej z komórek
+
+# Tabela 2 x 2 x 2
+tab<-xtabs(Freq~Plec+Zgon+Wyksztalcenie,data=df_tab)
+tab
+
+# Dane do modeli log-liniowych
+df<-as.data.frame(tab)
+names(df)
+
+# ZAD 1
+# Tabela zagregowana
+tab_ogolna<-margin.table(tab,c(1,2))
+tab_ogolna
+
+# Odsetki przyjętych według płci
+prop.table(tab_ogolna,margin=2)
+
+# Tabela dla każdej grupy wydziałów
+tab
+
+# Odsetki przyjętych w każdej warstwie
+prop.table(tab,margin=c(2,3))
+
+# Widzimy zatem, że:
+# - łącznie wyższy odsetek przyjęć występuje wśród mężczyzn;
+# - w grupie A–B wyższy odsetek przyjęć występuje wśród kobiet;
+# - w grupie C–F również wyższy odsetek przyjęć występuje wśród kobiet.
+
+
+# Test niezależności bez uwzględnienia wydziału
+chisq.test(tab_ogolna,correct=FALSE)
+
+# Test w grupie A-B
+chisq.test(tab[,,"niskie"],correct=FALSE)
+
+# Test w grupie C-F
+chisq.test(tab[,,"wysokie"],correct=FALSE)
+
+
+# Proporcje przyjętych w grupach płci
+proporcje<-as.data.frame(prop.table(tab,margin=c(1,3)))
+
+ggplot(subset(proporcje,Zgon=="1"),
+       aes(x=Wyksztalcenie,y=Freq,fill=Wyksztalcenie))+
+  geom_col(width=0.6)+
+  facet_wrap(~Plec)+
+  scale_y_continuous(
+    labels=function(x) paste0(round(100*x),"%"))+
+  labs(title="Odsetki zgonów według płci i poziomu wykształcenia",
+       x="Płeć",y="Odsetek zgonów")+
+  theme_minimal()+guides(fill="none")
+
+# Paradoks Simpsona wynika przede wszystkim ze zróżnicowania udziałów kandydatów obu płci pomiędzy wydziałami o różnych poziomach selektywności. Mężczyźni częściej aplikowali na wydziały z wyższymi ogólnymi odsetkami przyjęć, natomiast kobiety częściej na wydziały bardziej selektywne.
+# Nie można zatem wnioskować o efekcie płci wyłącznie na podstawie tabeli zagregowanej.
+
+# ZAD 2
+
+# [1 3]	Liczebności zależą od decyzji o przyjęciu i grupy wydziałów, bez interakcji między nimi ani efektu płci
+# [13]	Decyzja o przyjęciu może zależeć od grupy wydziałów; model nie zawiera efektu płci
+# [1 2 3]	Wszystkie trzy zmienne są wzajemnie niezależne
+# [12 3]	Decyzja o przyjęciu i płeć mogą być zależne, ale grupa wydziałów jest niezależna od obu tych zmiennych
+# [12 13]	Płeć i grupa wydziałów są warunkowo niezależne przy ustalonej decyzji o przyjęciu
+# [1 23]	Decyzja o przyjęciu jest niezależna od łącznego rozkładu płci i grupy wydziałów
+
+# Modele
+
+m_1_3<-glm(Freq~Plec+Wyksztalcenie,family=poisson,data=df)
+m_13<-glm(Freq~Plec*Wyksztalcenie,family=poisson,data=df)
+m_1_2_3<-glm(Freq~Plec+Zgon+Wyksztalcenie,family=poisson,data=df)
+m_12_3<-glm(Freq~Plec*Zgon+Wyksztalcenie,family=poisson,data=df)
+m_12_13<-glm(Freq~Plec*Zgon+Plec*Wyksztalcenie,family=poisson,data=df)
+m_1_23<-glm(Freq~Plec+Zgon*Wyksztalcenie,family=poisson,data=df)
+m_12_23_13<-glm(Freq~Zgon*Wyksztalcenie+Plec*Wyksztalcenie+Plec*Zgon,family=poisson,data=df)
+m_123<-glm(Freq~Plec*Zgon*Wyksztalcenie,family=poisson,data=df)
+m_13_23<-glm(Freq~Plec*Wyksztalcenie+Zgon*Wyksztalcenie,family=poisson,data=df)
+
+# ZAD 3
+
+anova(m_1_2_3,m_123,test="LRT")
+anova(m_1_2_3,m_12_23_13,test="LRT")
+anova(m_1_2_3,m_12_13,test="LRT")
+anova(m_1_2_3,m_12_3,test="LRT")
+
+anova(m_1_23,m_123,test="LRT")
+
+anova(m_13_23,m_123,test="LRT")
+
+anova(m_12_23_13,m_123,test="LRT")
+
+# ZAD 4
+
+N<-sum(df$Freq)
+
+model.full<-glm(Freq~Plec*Zgon*Wyksztalcenie,family=poisson,data=df)
+model.null<-glm(Freq~Plec+Zgon+Wyksztalcenie,family=poisson,data=df)
+
+model.AIC<-step(model.full,
+                scope=list(
+                  lower=formula(model.null),
+                  upper=formula(model.full)),
+                direction="backward",k=2,trace=FALSE)
+
+summary(model.AIC)
+formula(model.AIC)
+AIC(model.AIC)
+
+model.BIC<-step(model.full,
+                scope=list(
+                  lower=formula(model.null),
+                  upper=formula(model.full)),
+                direction="backward",k=log(N),trace=FALSE)
+
+summary(model.BIC)
+formula(model.BIC)
+AIC(model.BIC)
+
+
+data.frame(
+  Kryterium=c("AIC","BIC"),
+  Model=c(
+    paste(deparse(formula(model.AIC)),collapse=""),
+    paste(deparse(formula(model.BIC)),collapse="")),
+  Wartosc=c(AIC(model.AIC),BIC(model.BIC)))
+
+
+
+coef(model.AIC)
+coef(model.BIC)
+
+summary(model.AIC)
+summary(model.BIC)
+
+
+wyniki.AIC<-df
+wyniki.AIC$m_hat<-fitted(model.AIC)
+wyniki.AIC$p_hat<-wyniki.AIC$m_hat/sum(wyniki.AIC$m_hat)
+
+# Model BIC
+wyniki.BIC<-df
+wyniki.BIC$m_hat<-fitted(model.BIC)
+wyniki.BIC$p_hat<-wyniki.BIC$m_hat/sum(wyniki.BIC$m_hat)
+
+wyniki.AIC
+wyniki.BIC
+
+# Kontrola
+sum(wyniki.AIC$p_hat)
+sum(wyniki.BIC$p_hat)

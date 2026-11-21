@@ -29,11 +29,11 @@ library(binom)
 knitr::opts_chunk$set(
   fig.align = 'center',
   fig.pos = 'H',
-  dev = 'png',
-  dpi = 1200,
+  dev = 'cairo_pdf',
   fig.width = 6,
   fig.height = 3.5,
   echo = FALSE, # important
+  warning = FALSE,
   cache = TRUE
 )
 
@@ -51,6 +51,7 @@ theme_set(
 ziarno <- 282241 + 258882
 set.seed(ziarno)
 ```
+\floatplacement{table}{H}
 
 \newpage
 
@@ -62,7 +63,7 @@ Lista 1. stanowi wprowadzenie do pracy związanej z analizą danych ankietowych.
 
 Zadanie polega na wyborze odpowiedniego zbioru danych do dalszej analizy. Wybrano zbiór `SuicideChina`, dostępny w bibliotece `Stat2Data` w języku R.
 
-Zbiór danych został poddany wstępnemu przetwarzaniu w celu przygotowania go do dalszych analiz. Usunięto zmienne nieprzydatne w analizie, takie jak identyfikator osoby (`Person_ID`), rok (`Year`) i miesiąc (`Month`). Następnie przetłumaczono nazwy zmiennych oraz wartości kategorii na język polski, aby ułatwić interpretację danych i zachować spójność językową analizy. Zmieniono nazwy kolumn na `Hospitalizowano`, `Zgon`, `Miasto`, `Plec`, `Wiek`, `Wyksztalcenie`, `Zawod` i `Metoda`. Odfiltrowano  obserwacje zawierające niesprecyzowane lub niepożądane wartości w zmiennych `Miasto`, `Wyksztalcenie`, `Zawod` i `Metoda`. Zmienne binarne w `Hospitalizowano`, `Zgon` oraz `Miasto` przekonwertowano na wartości binarne 1 oraz 0. W zmiennej `Metoda` wartości z kategorią „Niesprecyzowana trucizna" zastąpiono kategorią „Inna trucizja”. Zmienną `Wykształcenie` przekształcono w zmienną porządkową, uwzględniając kolejność poziomów wykształcenia.
+Zbiór danych został poddany wstępnemu przetwarzaniu w celu przygotowania go do dalszych analiz. Usunięto zmienne nieprzydatne w analizie, takie jak identyfikator osoby (`Person_ID`), rok (`Year`) i miesiąc (`Month`). Następnie przetłumaczono nazwy zmiennych oraz wartości kategorii na język polski, aby ułatwić interpretację danych i zachować spójność językową analizy. Zmieniono nazwy kolumn na `Hospitalizowano`, `Zgon`, `Miasto`, `Plec`, `Wiek`, `Wyksztalcenie`, `Zawod` i `Metoda`. Odfiltrowano  obserwacje zawierające niesprecyzowane lub niepożądane wartości w zmiennych `Miasto`, `Wyksztalcenie`, `Zawod` i `Metoda`. Zmienne binarne w `Hospitalizowano`, `Zgon` oraz `Miasto` przekonwertowano na wartości binarne 1 oraz 0. W zmiennej `Metoda` wartości z kategorią „Niesprecyzowana trucizna" zastąpiono kategorią „Inna trucizna”. Zmienną `Wykształcenie` przekształcono w zmienną porządkową, uwzględniając kolejność poziomów wykształcenia.
 
 Wprowadzone zmiany miały na celu poprawę czytelności i jakości danych, ujednolicenie sposobu kodowania zmiennych oraz przygotowanie zbioru do dalszej analizy statystycznej.
 
@@ -621,7 +622,7 @@ H_1:p_K\neq p_M
 $$
 ,gdzie $p_K$ -- prawdopodobieństwo zgonu wśród kobiet oraz $p_M$ - prawdopodobieństwo zgonu wśród mężczyzn.
 
-Do weryfikacji hipotez zastosowano asymptotyczny test równości dwóch proporcji, oparty na statystyce $U$ o rozkładzie asymptotycznie normalnym standardowym przy prawdziwości hipotezy zerowej. Test przeprowadzono na poziomie istotności $\alpha = 0.05$
+Do weryfikacji hipotez zastosowano asymptotyczny test równości dwóch proporcji, oparty na statystyce $U$ o rozkładzie asymptotycznie normalnym standardowym przy prawdziwości hipotezy zerowej. Test przeprowadzono na poziomie istotności $\alpha = 0.05$.
 
 ```{r}
 xK <- sum(SuicideChina$Zgon[SuicideChina$Plec == "kobieta"] == 1)
@@ -689,18 +690,17 @@ test_creesie_reed <- function(tabela, lambda = 2/3){
 ```
 
 
-
 ## Zadanie 2
 
-Zadanie polega na weryfikacji hipotezy o niezależności dwóch wybranych zmiennych ze zbioru danych. Do weryfikacji wykorzystamy statystykę z rodziny statystyk Creesie'a-Reada $I^{2/3}$ (wartość zaproponowana przez autorów statystyki).
+Zadanie polega na weryfikacji hipotezy o niezależności dwóch wybranych zmiennych ze zbioru danych. Do weryfikacji wykorzystamy statystykę z rodziny statystyk Cressie'a-Reada $I^{2/3}$ (wartość zaproponowana przez autorów statystyki) oraz wybrano zmienne `Zgon` i `Wykształcenie`.
 
-Weryfikujemy hipotezę zerową, na poziomie istotności $\alpha=0,05$ że prawdopodobieństwo zgonu jest takie same w każdej grupie, niezależnie od poziomu wykształcenia.
+Weryfikujemy hipotezę zerową, na poziomie istotności $\alpha=0,05$ że prawdopodobieństwo zgonu jest takie samo w każdej grupie, niezależnie od poziomu wykształcenia.
 
 ```{r, warning=FALSE}
 tabela_zgon_wyksztalcenie <- table(SuicideChina$Zgon, SuicideChina$Wyksztalcenie, dnn = c('Zgon', 'Wykształcenie'))
 rownames(tabela_zgon_wyksztalcenie) <- c('Nie', 'Tak')
 
-kable(tabela_zgon_wyksztalcenie, row.names = TRUE) %>%
+kable(tabela_zgon_wyksztalcenie, row.names = TRUE, caption = "Liczności wyniku próby samobójczej w zależności od poziomu wykształcenia") %>%
   add_header_above(c("Zgon" = 1, "Wykształcenie" = ncol(tabela_zgon_wyksztalcenie)))
 ```
 
@@ -710,7 +710,7 @@ wynik_testu_CR <- test_creesie_reed(tabela_zgon_wyksztalcenie, lambda = 2/3)
 wynik_testu_CR_p_value <- round(wynik_testu_CR$p_value,4)
 ```
 
-Wartość p-value jest równa `r wynik_testu_CR_p_value`, więc jest niższa od przyjętego poziomu istotności $\alpha=0,05$. Zatem odrzucamy hipotezę zerową na rzecz hipotezy alternatywnej. Oznacza to, że istnieją statystycznie istotne podstawy do stwierdzenia, że prawdopodobieństwo zgonu różni się w poszczególnych grupach o różnym poziomie wykształcenia.
+Wartość p-value jest mniejsza niż 0,001, więc jest niższa od przyjętego poziomu istotności $\alpha=0,05$. Zatem odrzucamy hipotezę zerową na rzecz hipotezy alternatywnej. Oznacza to, że istnieją statystycznie istotne podstawy do stwierdzenia, że prawdopodobieństwo zgonu różni się w poszczególnych grupach o różnym poziomie wykształcenia.
 
 
 \newpage
@@ -720,17 +720,16 @@ Lista polega na analizie zależności między trzema zmiennymi za pomocą parado
 
 ## Zadanie 1
 
-Zadanie polega na sprawdzeniu, czy dla wybranych trzech zmiennych zachodzi paradoks Simpsona. Wybrano zmienne A, B i C. W razie potrzeby należy połączyć sąsiednie kategorie odpowiedzi, a następnie przeanalizować częstości i wykonać odpowiedni test statystyczny.
+Zadanie polega na sprawdzeniu, czy dla wybranych trzech zmiennych zachodzi paradoks Simpsona. Wybrano zmienne `Zgon`, `Płeć` i `Wykształcenie`. W przypadku poziomu wykształcenia połączono sąsiednie kategorie odpowiedzi. Kategorię "niepiśmienny" i "podstawowe" połączono w kategorię "niskie", natomiast "średnie" i "wyższe" połączono w kategorię "wysokie". Następnie przeanalizowano częstości i wykonano odpowiedni test statystyczny.
+
+Do weryfikacji hipotez zastosowano asymptotyczny test równości dwóch proporcji, oparty na statystyce $U$ o rozkładzie asymptotycznie normalnym standardowym przy prawdziwości hipotezy zerowej. Test przeprowadzono na poziomie istotności $\alpha = 0.05$.
 
 ```{r}
 
 dane_lista5 <- SuicideChina
 
-table(dane_lista5$Wyksztalcenie)
-
 # Łączymy niepiśmienny + podstawowe i średnie + wyższe
 # Tworzymy nową zmienną w danych
-
 dane_lista5$Wyksztalcenie_zgrupowane <- ifelse(
   dane_lista5$Wyksztalcenie%in% c('niepiśmienny', 'podstawowe'),
   'niskie',
@@ -740,24 +739,318 @@ dane_lista5$Wyksztalcenie_zgrupowane <- ifelse(
 dane_lista5$Wyksztalcenie_zgrupowane <- factor(
   dane_lista5$Wyksztalcenie_zgrupowane, levels = c('niskie','wysokie'))
 
+
+# Tabela liczności dla cech Zgon i Wykształcenie_zgrupowane
+zgon_edu_zgrupowane <- table(dane_lista5$Zgon,
+                                  dane_lista5$Wyksztalcenie_zgrupowane)
+
+rownames(zgon_edu_zgrupowane) <-  c('Nie', 'Tak')
+
+# Proporcje zgonów w grupach wykształcenia
+# Szacujemy prawdopodobieństwo zgonu w grupie o niskim poziomie wykształcenia
+# oraz w grupie o wysokim poziomie wykształcenia
+proporcje_zgon_edu_zgrupowane <- prop.table(zgon_edu_zgrupowane, margin =2) # Proporcje w kolumnach
+
+
+# Test o równości prawdopodobieństwa 'sukcesu' (Zgonu) w dwóch grupach różniących się wykształceniem
+test_rownosc_zgon_edu <- prop.test(x = zgon_edu_zgrupowane['Tak',], # liczba 'sukcesów'
+          n = colSums(zgon_edu_zgrupowane), # liczba w danej grupie wykształcenia
+          alternative = 'two.sided', correct = FALSE )
+
+p_val_rownosc_zgon_edu <- test_rownosc_zgon_edu$p.val
+# Odrzucamy hipotezę H0 o równości prawdopodobieństwa zgonu w grupach o różnym poziomie wykształcenia
+
 ```
 
 
+```{r tab_pop_razem}
+
+t_licznosci_razem <- kable(zgon_edu_zgrupowane, row.names = TRUE) %>%
+  add_header_above(c("Zgon" = 1, "Wykształcenie" = ncol(zgon_edu_zgrupowane)))
+
+t_proporcje_razem <- kable(proporcje_zgon_edu_zgrupowane, row.names = TRUE, digits = 4) %>%
+  add_header_above(c("Zgon" = 1, "Wykształcenie" = ncol(proporcje_zgon_edu_zgrupowane)))
+
+kables(
+  list(t_licznosci_razem, t_proporcje_razem),
+  caption = "Liczności oraz proporcje wyniku próby samobójczej w zależności od poziomu wykształcenia w całej badanej populacji",
+  label = "tab_pop_razem"
+)
+```
+
+
+W tabeli \ref{tab:tab_pop_razem}. zestawiono zarówno liczności, jak i proporcje zgonów w grupach o różnym poziomie wykształcenia. Oszacowanie punktowe prawdopodobieństwa zgonu jest większe w grupie osób o niższym poziomie wykształcenia.
+
+Aby zweryfikować występowanie paradoksu Simpsona w danych, dokonano podziału tabel liczności z uwzględnieniem zmiennej `Płeć` oraz wyznaczono na ich podstawie odpowiednie proporcje i statystyki testowe. 
+
+```{r}
+# Tabele z uwzględnieniem zmiennej Płeć
+dane_kobiety <- dane_lista5[dane_lista5$Plec=='kobieta',]
+dane_mezczyzni <- dane_lista5[dane_lista5$Plec=='mężczyzna',]
+
+# Kobiety
+K_zgon_edukacja <- table(dane_kobiety$Zgon, dane_kobiety$Wyksztalcenie_zgrupowane)
+rownames(K_zgon_edukacja) <-  c('Nie', 'Tak')
+
+proporcja_K <- prop.table(K_zgon_edukacja, margin = 2)
+test_K <- prop.test(x=K_zgon_edukacja['Tak',],
+                    n = colSums(K_zgon_edukacja),
+                    alternative = 'two.sided', correct = FALSE)
+p_val_K <- test_K$p.value
+
+# Mężczyźni
+M_zgon_edukacja <- table(dane_mezczyzni$Zgon, dane_mezczyzni$Wyksztalcenie_zgrupowane)
+rownames(M_zgon_edukacja) <-  c('Nie', 'Tak')
+
+proporcja_M <- prop.table(M_zgon_edukacja, margin = 2)
+test_M <- prop.test(x = M_zgon_edukacja['Tak',],
+                    n = colSums(M_zgon_edukacja),
+                    alternative = 'two.sided', correct = FALSE)
+p_val_M <- test_M$p.value
+
+# Wykształcenie wpływa na zgon
+# zarówno w całej populacji, jak i w grupach z podziałem na płeć
+
+# Zależność między wykształceniem a ryzykiem zgonu
+# jest istotna statystycznie i ma taki sam kierunek niezależnie od płci
+
+
+# Nie występuje paradoks Simpsona
+# Niezależnie od tego czy uwzględniamy Płeć czy nie, prawdopodobieństwo Zgonu
+# w grupie o niższym poziomie wykształcenia jest większe
+
+```
+
+
+```{r tab_pop_K}
+t_licznosci_K <- kable(K_zgon_edukacja, row.names = TRUE) %>%
+  add_header_above(c("Zgon" = 1, "Wykształcenie" = ncol(K_zgon_edukacja)))
+
+t_proporcje_K <- kable(proporcja_K, row.names = TRUE, digits = 4) %>%
+  add_header_above(c("Zgon" = 1, "Wykształcenie" = ncol(proporcja_K)))
+
+kables(
+  list(t_licznosci_K, t_proporcje_K),
+  caption = "Liczności oraz proporcje wyniku próby samobójczej w zależności od poziomu wykształcenia w grupie kobiet",
+  label = "tab_pop_K"
+)
+```
+
+
+```{r tab_pop_M}
+t_licznosci_M <- kable(M_zgon_edukacja, row.names = TRUE) %>%
+  add_header_above(c("Zgon" = 1, "Wykształcenie" = ncol(M_zgon_edukacja)))
+
+t_proporcje_M <- kable(proporcja_M, row.names = TRUE, digits = 4) %>%
+  add_header_above(c("Zgon" = 1, "Wykształcenie" = ncol(proporcja_M)))
+
+kables(
+  list(t_licznosci_M, t_proporcje_M),
+  caption = "Liczności oraz proporcje wyniku próby samobójczej w zależności od poziomu wykształcenia w grupie mężczyzn",
+  label = "tab_pop_M"
+)
+```
+
+W tabelach \ref{tab:tab_pop_K} oraz \ref{tab:tab_pop_M} zestawiono zarówno liczności, jak i proporcje zgonów w grupach o różnym poziomie wykształcenia z podziałem na płeć. Zarówno w grupie kobiet, jak i w grupie mężczyzn, oszacowane prawdopodobieństwo zgonu pozostaje wyższe wśród osób z niskim wykształceniem.
+
+
+Dla wszystkich trzech analizowanych przypadków test równości dwóch proporcji (`prop.test()`) zwrócił wartości p-value mniejsze od 0,001, czyli znacznie poniżej przyjętego poziomu istotności $\alpha$ = 0,05. Oznacza to, że w każdej z badanych grup odrzucamy hipotezę zerową o równości prawdopodobieństw zgonu - zależność między poziomem wykształcenia a ryzykiem zgonu występuje zarówno w całej grupie, jak i wewnątrz obu podgrup płci.
+
+Na podstawie przeprowadzonej analizy można stwierdzić, że paradoks Simpsona nie występuje. Niezależnie od tego, czy uwzględniamy zmienną `Płeć`, czy analizujemy dane dla całej populacji, kierunek badanej zależności pozostaje identyczny.
+
+W kolejnych zadaniach z listy 5 przyjęto zmienną `Wykształcenie` w zagregowanej formie (podział na "niskie"/"wysokie").
+
 ## Zadanie 2
 
-Zadanie polega na interpretacji sześciu wskazanych modeli log-liniowych dla trzech zmiennych A, B i C. Należy wyjaśnić, jakie zależności między zmiennymi opisuje każdy z modeli.
+Zadanie polega na interpretacji sześciu wskazanych modeli log-liniowych dla trzech zmiennych. Przyjęta kolejność wybranych zmiennych to 1 = `Zgon`, 2 = `Płeć` i 3 = `Wykształcenie`. Należy wyjaśnić, jakie zależności między zmiennymi opisuje każdy z modeli.
 
+Interpretacja poszczególnych modeli log-liniowych:
+
+* [1 3] - zgon, płeć i poziom wykształcenia są od siebie niezależne. Zmienne `Zgon` i `Wykształcenie` mają dowolny rozkład, natomiast zmienna `Płeć` ma rozkład równomierny.
+
+* [13] - zmienna `Płeć` ma rozkład równomierny oraz jest niezależna od pozostałych zmiennych, natomiast zmienne `Zgon` i `Wykształcenie` są ze sobą powiązane.
+
+* [1 2 3] - brak jakichkolwiek powiązań między trzema zmiennymi (wszystkie są od siebie niezależne).
+
+* [12 3] - zmienna `Wykształcenie` jest niezależna od zmiennej `Zgon` i `Płeć`, ale zmienne `Zgon` i `Płeć` są ze sobą powiązane.
+
+* [12 13] - `Płeć` i `Wykształcenie` są niezależne przy ustalonej odpowiedzi na `Zgon` (są warunkowo niezależne).
+
+* [1 23] - `Zgon` jest niezależny od zmiennej `Płeć` i `Wykształcenie`, ale zmienne `Płeć` i `Wykształcenie` są ze sobą powiązane.
 
 
 ## Zadanie 3
 
-Zadanie polega na zweryfikowaniu trzech hipotez dotyczących zależności między zmiennymi A, B i C:
-- Wzajemnej niezależności wszystkich trzech zmiennych.
-- Niezależności zmiennej A od zmiennych B i C, przy jednoczesnej zależności B i C.
-- Warunkowej niezależności zmiennych A i B pod warunkiem C.
+Zadanie polega na zweryfikowaniu trzech hipotez dotyczących zależności między zmiennymi `Zgon`, `Płeć` i `Wykształcenie`:
+
+a) Wzajemnej niezależności wszystkich trzech zmiennych.
+b) Niezależności zmiennej `Zgon` od zmiennych `Płeć` i `Wykształcenie`, przy jednoczesnej zależności zmiennej `Płeć` i zmiennej `Wykształcenie`.
+c) Warunkowej niezależności zmiennych `Zgon` i `Płeć` pod warunkiem zmiennej `Wykształcenie`.
+
+Hipotezy te odpowiadają testowaniu dopasowania modelu $H0$: $\mathcal{M} = \mathcal{M}_0$, gdzie
+
+a) $\mathcal{M}_0$ = [1 2 3],
+b) $\mathcal{M}_0$ = [1 23],
+c) $\mathcal{M}_0$ = [13 23].
+
+W każdym podpunkcie hipotezą alternatywną jest model pełny ($H1$: $\mathcal{M}$ = [123]).
+
+Do wyznaczenia modeli wykorzystano funkcję `loglin()`, natomiast do wyznaczenia wartości p-value użyto statystyki ilorazu wiarogodności $G^2$, która przy prawdziwości $H0$ ma asymptotycznie rozkład $\chi^2_{df}$ z liczbą stopni swobody `df` równą różnicy w liczbie estymowanych parametrów między modelem pełnym a modelem $\mathcal{M}_0$).
+
+```{r}
+tab_zgon_plec_edukacja <- table(dane_lista5$Zgon,
+                                     dane_lista5$Plec,
+                                     dane_lista5$Wyksztalcenie_zgrupowane)
+
+# a) H0: M = [1 2 3]
+model_a_loglin <- loglin(tab_zgon_plec_edukacja, margin = list(1,2,3),
+                         param = TRUE, fit = TRUE, print = FALSE)
+# param = TRUE - zwrócenie oszacowanych parametrów modelu log-liniowego (lambdy)
+# fit = TRUE - zwrócenie oczekiwanych liczności w komórkach tabeli (przy prawdziwości H0)
+
+# Wyznaczenie p-wartości
+a_pval <- 1 - pchisq(model_a_loglin$lrt, df = model_a_loglin$df)
+
+
+# b) H0: M = [1 23]
+model_b_loglin <- loglin(tab_zgon_plec_edukacja, margin = list(1,c(2,3)),
+                         param = TRUE, fit = TRUE, print = FALSE)
+
+b_pval <- 1 - pchisq(model_b_loglin$lrt, df = model_b_loglin$df)
+
+
+# c) H0: M = [13 23]
+model_c_loglin <- loglin(tab_zgon_plec_edukacja, margin = list(c(1,3),c(2,3)),
+                         param = TRUE, fit = TRUE, print = FALSE)
+
+c_pval <- 1 - pchisq(model_c_loglin$lrt, df = model_c_loglin$df)
+
+# We wszystkich 3 hipotezach odrzucamy H0
+# Oznacza to, że przyjęcie założenia o całkowitej, wzajemnej niezależności Zgonu, Płci i Wykształcenia
+# prowadzi do istotnego pogorszenia dopasowania do danych względem modelu pełnego (hipotezy alternatywnej).
+# Przynajmniej niektóre z tych zmiennych muszą być ze sobą wzajemnie zależne
+```
+
+
+```{r tab-l5-3}
+wyniki_zad3_lista5 <- data.frame(
+  Hipoteza = c("[1 2 3]", "[1 23]", "[13 23]"),
+  Statystyka_G2 = round(c(model_a_loglin$lrt, model_b_loglin$lrt, model_c_loglin$lrt), 4),
+  df = c(model_a_loglin$df, model_b_loglin$df, model_c_loglin$df),
+  p_value = format.pval(c(a_pval, b_pval, c_pval), digits = 4, eps = 0.001)
+)
+
+kable(
+  wyniki_zad3_lista5,
+  col.names = c("Model $\\mathcal{M}_0$", "Statystyka $G^2$", "Stopnie swobody", "$p$-value"),
+  caption = "Wyniki testów ilorazu wiarogodności dla wybranych modeli log-liniowych",
+  escape = FALSE,
+  label = 'tab-l5-3',
+  format = 'latex'
+)
+```
+
+W tabeli \ref{tab:tab-l5-3}. przedstawiono wartości statystyki testowej $G^2$, liczby stopni swobody oraz poziomy krytyczne dla wszystkich trzech rozważanych hipotez.
+
+W każdym z trzech analizowanych przypadków uzyskana wartość p-value jest mniejsza od przyjętego poziomu istotności $\alpha$ = 0,05, co prowadzi do odrzucenia hipotezy zerowej $H_0$ na rzecz modelu pełnego $[123]$. Oznacza to, że żaden z powyższych uproszczonych modeli nie opisuje danych w sposób wystarczająco dokładny - w badanej populacji występują bardziej skomplikowane powiązania pomiędzy analizowanymi zmiennymi.
 
 
 ## Zadanie 4 – Wybór najlepszego modelu
 
-Zadanie polega na wybraniu najlepszego modelu log-liniowego dla trzech zmiennych A, B i C, osobno na podstawie kryteriów AIC i BIC. Następnie przedstawiono oszacowania parametrów wybranego modelu oraz obliczono oszacowane prawdopodobieństwa $p_{ijk}$ dla wszystkich możliwych kombinacji wartości tych zmiennych.
+Zadanie polega na wybraniu najlepszego modelu log-liniowego dla trzech zmiennych `Zgon`, `Płeć` i `Wykształcenie`, osobno na podstawie kryteriów AIC i BIC. Następnie przedstawiono oszacowania parametrów wybranego modelu oraz obliczono oszacowane prawdopodobieństwa $p_{ijk}$ dla wszystkich możliwych kombinacji wartości tych zmiennych.
+
+Ponieważ w tabeli kontyngencji nie występują zerowe liczności w komórkach, istnieje jednoznaczne oszacowanie NW. Można zatem wykorzystać zarówno funkcję `loglin()` jak i `glm()`.
+
+```{r}
+# Z istnienia i jednoznaczności oszacowania NW, możemy wykorzystać zarówno loglin() jak i glm()
+
+# Korzystamy z glm() do funkcji step()
+# Później wracamy do loglin() aby mieć interpretację identyczną jak w 
+
+
+tab_zgon_plec_edukacja <- table(dane_lista5$Zgon,
+                                dane_lista5$Plec,
+                                dane_lista5$Wyksztalcenie_zgrupowane)
+
+
+# Konieczna konwersja do data frame dla glm()
+df_tab <- as.data.frame(tab_zgon_plec_edukacja)
+colnames(df_tab) <- c("Plec", "Zgon", "Wyksztalcenie", 'Freq')
+df_tab # Freq to liczność w każdej z komórek
+
+N <- log(sum(df_tab$Freq))
+
+# Tworzymy model pełny, z którego będziemy usuwać zależności
+model_pelny <- glm(Freq ~ Plec*Zgon*Wyksztalcenie, data = df_tab, family = poisson)
+model_1_2_3 <- glm(Freq~Plec+Zgon+Wyksztalcenie, family=poisson, data=df_tab)
+
+# Wybór według AIC
+najlepszy_aic <- step(model_pelny, 
+    scope=list(
+      lower=formula(model_1_2_3),
+      upper=formula(model_pelny)),
+  direction="backward",
+  k=2,
+  trace=FALSE)
+
+summary(najlepszy_aic)
+
+# Wybór według BIC
+najlepszy_bic <- step(model_pelny, 
+    scope=list(
+      lower=formula(model_1_2_3),
+      upper=formula(model_pelny)),
+  direction="backward",
+  k=N,
+  trace=FALSE)
+
+summary(najlepszy_bic)
+
+# Najlepszy model AIC to [12 23] 
+# Najlepszy model BIC to [12 23] 
+# 1 - Płeć , 2- Zgon, 3 - Wykształcenie
+# W obu przypadkach model jest ten sam
+
+# Wracamy do loglin
+
+najlepszy_model <- loglin(tab_zgon_plec_edukacja, margin = list(c(1,2), c(2,3)),
+                          param = TRUE, fit = TRUE, print = FALSE)
+
+najlepszy_parametry <- najlepszy_model$param
+# Jak interpretować wartości tych parametrów?
+
+oczekiwane_licznosci <- najlepszy_model$fit
+
+liczba_badanych <- sum(tab_zgon_plec_edukacja)
+
+# Oszacowanie prawdopodobieństwa p_ijk
+p_ijk <- oczekiwane_licznosci/liczba_badanych
+round(p_ijk,4)
+
+podsumowanie_AIC <- df_tab
+podsumowanie_AIC$oszacowanie_prawd <- as.vector(p_ijk)
+
+# Prawdopodobieństwo wylosowania kobiety z niskim wykształceniem, która zmarła, wynosi około 18,8%
+# Prawdopodobieństwo wylosowania mężczyzny z niskim wykształceniem, który zmarł, wynosi około 21,1%
+
+```
+
+```{r tab-l5-4-kryteria}
+tabela_kryteria <- data.frame(
+  Kryterium = c("AIC ($k = 2$)", "BIC ($k = \\ln(n)$)"),
+  Wybrany_model = c("[12 13]", "[12 13]"),
+  Wartosc_kryterium = round(c(AIC(najlepszy_aic), AIC(najlepszy_bic, k = N)), 2)
+)
+
+kable(
+  tabela_kryteria,
+  format = "latex",
+  col.names = c("Kryterium", "Model", "Wartość kryterium"),
+  caption = "Wyniki wyboru najlepszego modelu log-liniowego według kryteriów AIC i BIC",
+  escape = FALSE,
+  label = "tab-l5-4-kryteria"
+)
+```
+
+W tabeli \ref{tab:tab-l5-4-kryteria} przedstawiono wyniki poszukiwania optymalnego modelu za pomocą kryterium AIC oraz BIC. Oba kryteria wskazują na ten sam model [12 13]. Oznacza to, że zmienne `Płeć` i `Wykształcenie` są warunkowo niezależne przy ustalonym poziomie zmiennej `Zgon`, natomiast sama zmienna `Zgon` jest istotnie powiązana zarówno z `Płcią`, jak i z `Wykształceniem`.
 
