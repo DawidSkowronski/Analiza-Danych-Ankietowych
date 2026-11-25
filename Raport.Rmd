@@ -25,6 +25,7 @@ library(dplyr)
 library(Stat2Data)
 library(ggmosaic2)
 library(binom)
+library(DescTools)
 
 knitr::opts_chunk$set(
   fig.align = 'center',
@@ -993,7 +994,7 @@ najlepszy_aic <- step(model_pelny,
   k=2,
   trace=FALSE)
 
-summary(najlepszy_aic)
+#summary(najlepszy_aic)
 
 # Wybór według BIC
 najlepszy_bic <- step(model_pelny, 
@@ -1004,7 +1005,7 @@ najlepszy_bic <- step(model_pelny,
   k=N,
   trace=FALSE)
 
-summary(najlepszy_bic)
+#summary(najlepszy_bic)
 
 # Najlepszy model AIC to [12 23] 
 # Najlepszy model BIC to [12 23] 
@@ -1053,4 +1054,82 @@ kable(
 ```
 
 W tabeli \ref{tab:tab-l5-4-kryteria} przedstawiono wyniki poszukiwania optymalnego modelu za pomocą kryterium AIC oraz BIC. Oba kryteria wskazują na ten sam model [12 13]. Oznacza to, że zmienne `Płeć` i `Wykształcenie` są warunkowo niezależne przy ustalonym poziomie zmiennej `Zgon`, natomiast sama zmienna `Zgon` jest istotnie powiązana zarówno z `Płcią`, jak i z `Wykształceniem`.
+
+
+
+
+# Lista 6
+
+
+## Zadanie 1
+
+Zadanie polega na implementacji funkcji, której argumentem będzie dwuwymiarowa tabela kontyngencji o wymiarach $R\times C$ a wartością próbkowy współczynnik $\tilde{\tau}$ Goodmana i Kruskala.
+
+
+```{r}
+wsp_tau <- function(tabela){
+  n <- sum(tabela)
+  n_j <- colSums(tabela)
+  ni_ <- rowSums(tabela)
+  
+  hat_p_j <- n_j/n
+  
+  mianownik <- 1 - sum(hat_p_j^2)
+  
+  licznik <- sum(tabela^2/(n*ni_)) - sum(hat_p_j^2)
+  
+  tau <- licznik/mianownik
+  
+  return(tau)
+}
+```
+
+
+
+
+## Zadanie 2
+
+Zadanie polega na implementacji funkcji, której argumentem będzie dwuwymiarowa tabela kontyngencji o wymiarach $R\times C$ a wartością empiryczna korelacja odległości.
+
+```{r}
+
+empiryczna_korelacja_odl <- function(tabela){
+  
+  tabela <- as.matrix(tabela)
+  # Liczność
+  n <- sum(tabela)
+  
+  # Estymatory NW prawdopodobieństw łącznych brzegowych
+  p_ij <- tabela/n
+  pi_ <- rowSums(tabela)/n
+  p_j <- colSums(tabela)/n
+  
+  oczekiwane_prawd <- outer(pi_, p_j)
+  licznik <- sqrt(sum((p_ij - oczekiwane_prawd)^2))
+
+  
+  # Mianownik
+  pi_2 <- sum(pi_^2)
+  pi_3 <- sum(pi_^3)
+  p_j_2 <- sum(p_j^2)
+  p_j_3 <- sum(p_j^3)
+  
+  mianownik <- (pi_2*(pi_2+1)-2*pi_3)^(1/4) * (p_j_2*(p_j_2+1)-2*p_j_3)^(1/4)
+  
+  
+  return(licznik/mianownik)
+}
+
+```
+
+
+## Zadanie 3
+
+Zadanie polega na wyborze dwóch zmiennych z analizowanego zbioru danych i wyznaczeniu dla nich odpowiednich miar współzmienności. Wartość próbkowego współczynnika $\tilde{\tau}$ Goodmana i Kruskala obliczono zarówno za pomocą własnej funkcji zaimplementowanej w zadaniu 1, jak i wbudowanej funkcji z pakietu R (`DescTools`). Następnie wyznaczono wartość empirycznej korelacji odległości przy użyciu funkcji z zadania 2.
+
+## Zadanie 4
+
+Zadanie polega na wyborze dwóch zmiennych ze zbioru danych, z których każda przyjmuje więcej niż trzy kategorie, oraz przeprowadzeniu dla nich analizy korespondencji.
+
+
 
